@@ -1,6 +1,9 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Link } from 'expo-router'
 import { useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
 import {
   ActivityIndicator,
   Image,
@@ -10,38 +13,32 @@ import {
   View,
 } from 'react-native'
 
-import LogoImg from '@/assets/images/logo.png'
+import LogoImg from '@/assets/images/logo-white.png'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { useAuth } from '@/hooks/useAuth'
-import * as apiAuth from '@/services/escopo-api/auth'
+import { LoginData, loginSchema } from '@/schemas/login.schema'
+import * as auth from '@/services/escopo-api/auth'
+import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({ resolver: zodResolver(loginSchema) })
+
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
 
   const { login } = useAuth()
 
-  async function handleSubmit() {
+  async function onSubmit({ email, senha }: LoginData) {
     setError('')
-    setLoading(true)
 
     try {
-      const response = await apiAuth.login({
-        email,
-        senha: password,
-      })
-
-      console.log(response)
-
-      if (!response?.token) {
-        throw new Error('Resposta da API sem token. Tente novamente.')
-      }
+      const response = await auth.login({ email, senha })
 
       await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, response.token)
-
       await AsyncStorage.setItem(
         STORAGE_KEYS.AUTH_USER,
         JSON.stringify(response.usuario ?? { email }),
@@ -49,90 +46,111 @@ export default function Login() {
 
       login()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao efetuar login.')
-    } finally {
-      setLoading(false)
+      setError(extractApiErrorMessage(err))
     }
   }
 
   return (
-    <ScrollView
-      className="bg-fundo"
-      contentContainerClassName="grow"
-      keyboardShouldPersistTaps="handled"
+    <LinearGradient
+      colors={['#7E22CE', '#552BA9']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      className="flex-1"
     >
-      <View className="flex-1 items-center justify-center px-6 py-10">
-        <Image source={LogoImg} resizeMode="contain" className="mb-10 h-24 w-72" />
+      <ScrollView contentContainerClassName="grow" keyboardShouldPersistTaps="handled">
+        <View className="flex-1 items-center justify-center px-6 py-10">
+          <Image source={LogoImg} resizeMode="contain" className="mb-10 h-24 w-72" />
 
-        <View className="shadow-external w-full rounded-[36px] bg-white px-7 py-10">
-          <Text className="font-inter-bold mb-8 text-center text-2xl text-base">
-            Transforme ideias em requisitos bem definidos.
-          </Text>
+          <View className="w-full rounded-[36px] bg-white px-7 py-10 shadow-external">
+            <Text className="mb-8 text-center font-inter-bold text-2xl text-base">
+              Transforme ideias em requisitos bem definidos.
+            </Text>
 
-          <Text className="font-inter-bold text-cinza-700 mb-8 text-center text-3xl">Login</Text>
+            <Text className="mb-8 text-center font-inter-bold text-3xl text-cinza-700">Login</Text>
 
-          {!!error && (
-            <View className="mb-5 rounded-xl bg-red-100 px-4 py-3">
-              <Text className="text-vermelho text-center">{error}</Text>
-            </View>
-          )}
+            {!!error && (
+              <View className="mb-5 rounded-xl bg-red-100 px-4 py-3">
+                <Text className="text-center text-vermelho">{error}</Text>
+              </View>
+            )}
 
-          <View className="gap-5">
-            <View>
-              <Text className="font-inter-medium text-cinza-700 mb-2">E-mail</Text>
+            <View className="gap-5">
+              <>
+                <Text className="mb-2 font-inter-medium text-cinza-700">E-mail</Text>
 
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Digite seu e-mail"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                className="border-cinza-300 font-inter text-cinza-700 rounded-lg border-2 px-4 py-4"
-              />
-            </View>
+                <Controller
+                  control={control}
+                  name="email"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="Digite seu e-mail"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      className="rounded-lg border-2 border-cinza-300 px-4 py-4 font-inter text-cinza-700"
+                    />
+                  )}
+                />
 
-            <View>
-              <Text className="font-inter-medium text-cinza-700 mb-2">Senha</Text>
-
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Digite sua senha"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry
-                className="border-cinza-300 font-inter text-cinza-700 rounded-lg border-2 px-4 py-4"
-              />
-            </View>
-
-            <View className="items-end">
-              <Link href="/senha">
-                <Text className="font-inter-medium text-base text-sm">Esqueceu a senha?</Text>
-              </Link>
-            </View>
-
-            <View className="mt-4 gap-3">
-              <Link href="/cadastro" asChild>
-                <TouchableOpacity className="border-base rounded-lg border-2 py-4">
-                  <Text className="font-inter-semibold text-center text-base">Cadastre-se</Text>
-                </TouchableOpacity>
-              </Link>
-
-              <TouchableOpacity
-                disabled={loading}
-                onPress={handleSubmit}
-                className="bg-base items-center rounded-lg py-4 disabled:opacity-60"
-              >
-                {loading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text className="font-inter-semibold text-white">Entrar</Text>
+                {errors.email && (
+                  <Text className="mt-1 text-sm text-red-500">{errors.email.message}</Text>
                 )}
-              </TouchableOpacity>
+              </>
+
+              <>
+                <Text className="mb-2 font-inter-medium text-cinza-700">Senha</Text>
+
+                <Controller
+                  control={control}
+                  name="senha"
+                  render={({ field: { onChange, value } }) => (
+                    <TextInput
+                      value={value}
+                      onChangeText={onChange}
+                      placeholder="Digite sua senha"
+                      placeholderTextColor="#9CA3AF"
+                      secureTextEntry
+                      className="rounded-lg border-2 border-cinza-300 px-4 py-4 font-inter text-cinza-700"
+                    />
+                  )}
+                />
+
+                {errors.senha && (
+                  <Text className="mt-1 text-sm text-red-500">{errors.senha.message}</Text>
+                )}
+              </>
+
+              <View className="items-end">
+                <Link href="/senha">
+                  <Text className="font-inter-medium text-base text-sm">Esqueceu a senha?</Text>
+                </Link>
+              </View>
+
+              <View className="mt-4 gap-3">
+                <Link href="/cadastro" asChild>
+                  <TouchableOpacity className="rounded-lg border-2 border-base py-4">
+                    <Text className="text-center font-inter-semibold text-base">Cadastre-se</Text>
+                  </TouchableOpacity>
+                </Link>
+
+                <TouchableOpacity
+                  disabled={isSubmitting}
+                  onPress={handleSubmit(onSubmit)}
+                  className="items-center rounded-lg bg-base py-4 disabled:opacity-60"
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text className="font-inter-semibold text-white">Entrar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   )
 }
