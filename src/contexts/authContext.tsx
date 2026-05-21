@@ -1,7 +1,8 @@
-import { STORAGE_KEYS } from '@/constants/storage'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { createContext, PropsWithChildren, useEffect, useState } from 'react'
+
+import { STORAGE_KEYS } from '@/constants/storage'
 
 type AuthState = {
   isLoggedIn: boolean
