@@ -3,17 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Link } from 'expo-router'
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
-import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native'
+import { useForm } from 'react-hook-form'
+import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native'
 
 import LogoImg from '@/assets/images/logo-white.png'
+import {
+  LabelWithTextInput,
+  PropsWithoutControl as LabelWithTextInputProps,
+} from '@/components/form/LabelWithTextInput'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { useAuth } from '@/hooks/useAuth'
@@ -25,12 +22,27 @@ export default function Login() {
   const {
     control,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { isSubmitting, isValid },
   } = useForm({ resolver: zodResolver(loginSchema) })
 
   const [error, setError] = useState('')
 
   const { login } = useAuth()
+
+  const fields: LabelWithTextInputProps[] = [
+    {
+      name: 'email',
+      label: 'E-mail',
+      placeholder: 'Digite seu e-mail',
+      keyboardType: 'email-address' as const,
+    },
+    {
+      name: 'senha',
+      label: 'Senha',
+      placeholder: 'Digite sua senha',
+      secureTextEntry: true,
+    },
+  ]
 
   async function onSubmit({ email, senha }: LoginData) {
     setError('')
@@ -75,52 +87,9 @@ export default function Login() {
             )}
 
             <View className="gap-5">
-              <>
-                <Text className="mb-2 font-inter-medium text-cinza-700">E-mail</Text>
-
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Digite seu e-mail"
-                      placeholderTextColor="#9CA3AF"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      className="rounded-lg border-2 border-cinza-300 px-4 py-4 font-inter text-cinza-700"
-                    />
-                  )}
-                />
-
-                {errors.email && (
-                  <Text className="mt-1 text-sm text-red-500">{errors.email.message}</Text>
-                )}
-              </>
-
-              <>
-                <Text className="mb-2 font-inter-medium text-cinza-700">Senha</Text>
-
-                <Controller
-                  control={control}
-                  name="senha"
-                  render={({ field: { onChange, value } }) => (
-                    <TextInput
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Digite sua senha"
-                      placeholderTextColor="#9CA3AF"
-                      secureTextEntry
-                      className="rounded-lg border-2 border-cinza-300 px-4 py-4 font-inter text-cinza-700"
-                    />
-                  )}
-                />
-
-                {errors.senha && (
-                  <Text className="mt-1 text-sm text-red-500">{errors.senha.message}</Text>
-                )}
-              </>
+              {fields.map((field) => (
+                <LabelWithTextInput key={field.name} control={control} {...field} />
+              ))}
 
               <View className="items-end">
                 <Link href="/senha">
@@ -136,7 +105,7 @@ export default function Login() {
                 </Link>
 
                 <TouchableOpacity
-                  disabled={isSubmitting}
+                  disabled={!isValid || isSubmitting}
                   onPress={handleSubmit(onSubmit)}
                   className="items-center rounded-lg bg-base py-4 disabled:opacity-60"
                 >
