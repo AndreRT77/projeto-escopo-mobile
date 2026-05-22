@@ -2,7 +2,7 @@ import { Text } from '@/components/ui/Text'
 import { Controller } from 'react-hook-form'
 import { TextInput, View } from 'react-native'
 
-type Props = {
+type LabelWithTextInputProps = {
   control: any
   name: string
   label: string
@@ -12,8 +12,6 @@ type Props = {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters'
 }
 
-export type PropsWithoutControl = Omit<Props, 'control'>
-
 export function LabelWithTextInput({
   control,
   name,
@@ -22,7 +20,7 @@ export function LabelWithTextInput({
   secureTextEntry,
   keyboardType = 'default',
   autoCapitalize = 'none',
-}: Props) {
+}: LabelWithTextInputProps) {
   return (
     <Controller
       control={control}

@@ -4,11 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Link } from 'expo-router'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, View } from 'react-native'
 
 import LogoImg from '@/assets/images/logo-white.png'
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { Alert } from '@/components/ui/Alert'
+import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { useAuth } from '@/hooks/useAuth'
@@ -90,22 +91,16 @@ export default function Login() {
 
               <View className="mt-4 gap-3">
                 <Link href="/cadastro" asChild>
-                  <TouchableOpacity className="rounded-lg border-2 border-base py-4">
-                    <Text className="text-center font-inter-semibold text-base">Cadastre-se</Text>
-                  </TouchableOpacity>
+                  <Button variant="outline">Cadastre-se</Button>
                 </Link>
 
-                <TouchableOpacity
+                <Button
+                  loading={isSubmitting}
                   disabled={isSubmitting}
                   onPress={handleSubmit(onSubmit)}
-                  className="items-center rounded-lg bg-base py-4 disabled:opacity-60"
                 >
-                  {isSubmitting ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="font-inter-semibold text-white">Entrar</Text>
-                  )}
-                </TouchableOpacity>
+                  Entrar
+                </Button>
               </View>
             </View>
           </View>
