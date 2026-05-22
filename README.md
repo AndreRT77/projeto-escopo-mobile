@@ -10,7 +10,22 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Configurar o `.env`.
+
+   Para Mac sendo:
+
+   ```.env
+   EXPO_PUBLIC_API_URL='http://10.0.2.2:8080'
+   ```
+
+   E Windows sendo o Endereço IPv4 da máquina, obtido rodando o comando `ipconfig` no PowerShell.
+   Exemplo:
+
+   ```.env
+   EXPO_PUBLIC_API_URL='http://192.168.0.4:8080'
+   ```
+
+3. Start the app
 
    ```bash
    npx expo start

@@ -2,14 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { router } from 'expo-router'
 import { createContext, PropsWithChildren, useEffect, useState } from 'react'
 
+import { STORAGE_KEYS } from '@/constants/storage'
+
 type AuthState = {
   isLoggedIn: boolean
   isReady: boolean
   login: () => void
   logout: () => void
 }
-
-const AUTH_STORAGE_KEY = '@escopo:auth-state'
 
 export const AuthContext = createContext<AuthState>({} as AuthState)
 
@@ -19,7 +19,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function storageState(newState: { isLoggedIn: boolean }) {
     try {
-      await AsyncStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newState))
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_STATE, JSON.stringify(newState))
     } catch (error) {
       console.log('ERROR_SET_STORAGE_AUTH:', error)
     }
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     async function loadStorageState() {
       try {
-        const storedState = await AsyncStorage.getItem(AUTH_STORAGE_KEY)
+        const storedState = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_STATE)
         const state = storedState ? JSON.parse(storedState) : null
 
         setIsLoggedIn(state?.isLoggedIn ?? false)
