@@ -2,11 +2,12 @@ import { z } from 'zod'
 
 export const loginSchema = z.object({
   email: z
-    .email({ error: 'Deve ser um e-mail válido' })
+    .string({ error: 'Deve ser um texto' })
     .trim()
     .min(6, { error: 'Mínimo 6 caracteres' })
     .max(150, { error: 'Máximo 150 caracteres' })
-    .toLowerCase(),
+    .toLowerCase()
+    .email({ error: 'Deve ser um e-mail válido' }),
   senha: z
     .string({ error: 'Deve ser um texto' })
     .trim()
