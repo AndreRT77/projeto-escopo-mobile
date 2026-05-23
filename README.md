@@ -1,65 +1,110 @@
-# Welcome to your Expo app 👋
+# Projeto Escopo - Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo da plataforma de levantamento de requisitos, Escopo, como Trabalho de Conclusão de Curso (TCC) no curso de Desenvolvimento de Sistemas no SENAI.
 
-## Get started
+O app mobile permite que o usuário acesse e gerencie os projetos em que participa diretamente pelo celular.
 
-1. Install dependencies
+## Sobre o projeto
 
-   ```bash
-   npm install
-   ```
+O sistema foi desenvolvido com o objetivo de centralizar todo o levantamento de requisitos de projetos, permitindo:
 
-2. Configurar o `.env`.
+- Autenticação de usuários
+- Gerenciamento de projetos
+- Criação, edição e versionamento de documentos
+- Criação de registros
+- Documentação de reuniões entre o time e clientes
 
-   Para Mac sendo:
+Este repositório contém exclusivamente o aplicativo mobile da aplicação.
 
-   ```.env
-   EXPO_PUBLIC_API_URL='http://10.0.2.2:8080'
-   ```
+## Tecnologias utilizadas
 
-   E Windows sendo o Endereço IPv4 da máquina, obtido rodando o comando `ipconfig` no PowerShell.
-   Exemplo:
+- React Native
+- Expo
+- TypeScript
+- Expo Router
+- NativeWind (Tailwind CSS para React Native)
+- React Hook Form
+- Zod
+- Axios
+- AsyncStorage
 
-   ```.env
-   EXPO_PUBLIC_API_URL='http://192.168.0.4:8080'
-   ```
+## Estrutura de pastas
 
-3. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sql
+src/
+├── app/         -- Telas e rotas da aplicação (Expo Router)
+├── assets/      -- Arquivos estáticos (imagens, fontes, etc.)
+├── components/  -- Componentes reutilizáveis da interface
+├── constants/   -- Valores constantes usados em vários lugares (variáveis de ambiente, chaves de storage, etc.)
+├── contexts/    -- Contextos globais para compartilhamento de estado
+├── hooks/       -- Hooks customizados reutilizáveis
+├── schemas/     -- Schemas de validação e tipagem (Zod)
+├── services/    -- Comunicação externa (ex.: APIs)
+└── utils/       -- Funções auxiliares reutilizadas em diversos arquivos
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Pré-requisitos
 
-## Learn more
+Antes de iniciar, é necessário ter instalado:
 
-To learn more about developing your project with Expo, look at the following resources:
+- Node.js 22 ou superior
+- npm 10 ou superior
+- Android Studio (para Android)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Como executar o projeto
 
-## Join the community
+### 1. Inicie o back-end, seguindo o passo-a-passo [nesse repositório](https://github.com/zNathan2303/projeto-escopo-api)
 
-Join our community of developers creating universal apps.
+### 2. Clone este repositório:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+git clone https://github.com/AndreRT77/projeto-escopo-mobile
+```
+
+### 3. Instale as dependências
+
+```bash
+npm install
+```
+
+### 4. Configurar o `.env` (para visualizar no emulador de IOS/Android).
+
+Para Mac sendo:
+
+```.env
+EXPO_PUBLIC_API_URL='http://10.0.2.2:8080'
+```
+
+E Windows sendo o Endereço IPv4 da máquina, obtido rodando o comando `ipconfig` no PowerShell.
+Exemplo:
+
+```.env
+EXPO_PUBLIC_API_URL='http://192.168.0.4:8080'
+```
+
+### 5. Inicie o app
+
+```bash
+npx expo start
+```
+
+### 6. Configure o emulador de IOS/Android, vendo o passo-a-passo [aqui](https://docs.expo.dev/get-started/set-up-your-environment/).
+
+### 7. Acesse o respectivo dispositivo usado no emulador.
+
+## Repositórios relacionados
+
+Frontend:
+
+- https://github.com/Samys003/projeto-escopo-web
+
+Banco de dados:
+
+- https://github.com/EdvanOAlves/projeto-escopo-db
+
+## Equipe
+
+- [Nathan](https://www.linkedin.com/in/nathandasilvacosta/) - Backend e Mobile
+- [Edvan](https://www.linkedin.com/in/edvan-alves/) - Banco de dados e Frontend
+- [Samara](https://www.linkedin.com/in/samara-santos-b92160397/) - Frontend
+- André - Frontend
