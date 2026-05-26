@@ -9,10 +9,18 @@ type AlertProps = {
   message?: string
   type?: 'error' | 'success'
   duration?: number
+  position?: 'top' | 'bottom'
   onClose?: () => void
 }
 
-export function Alert({ visible, message, type = 'error', duration = 5000, onClose }: AlertProps) {
+export function Alert({
+  visible,
+  message,
+  type = 'error',
+  duration = 5000,
+  position = 'bottom',
+  onClose,
+}: AlertProps) {
   const progress = useRef(new Animated.Value(100)).current
 
   useEffect(() => {
@@ -58,12 +66,25 @@ export function Alert({ visible, message, type = 'error', duration = 5000, onClo
     outputRange: ['0%', '100%'],
   })
 
+  const positionClass = position === 'bottom' ? 'bottom-12' : 'top-12'
+
   return (
     <View
-      className={`absolute left-6 right-6 top-12 z-50 overflow-hidden rounded-2xl shadow-lg ${current.container}`}
+      className={`
+        absolute
+        left-6
+        right-6
+        z-50
+        overflow-hidden
+        rounded-2xl
+        shadow-lg
+        ${positionClass}
+        ${current.container}
+      `}
     >
       <View className="flex-row items-center gap-3 px-4 py-4">
         <current.icon color="white" />
+
         <Text className={`flex-1 font-inter-medium ${current.text}`}>{message}</Text>
 
         {!!onClose && (
@@ -73,7 +94,6 @@ export function Alert({ visible, message, type = 'error', duration = 5000, onClo
         )}
       </View>
 
-      {/* Barra de tempo */}
       <Animated.View style={{ width }} className="h-1 bg-white/80" />
     </View>
   )
