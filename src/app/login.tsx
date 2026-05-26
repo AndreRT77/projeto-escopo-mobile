@@ -53,7 +53,7 @@ export default function Login() {
       end={{ x: 1, y: 0 }}
       className="flex-1"
     >
-      <Alert visible={!!error} message={error} onClose={() => setError('')} />
+      <Alert visible={!!error} message={error} onClose={() => setError('')} position="top" />
 
       <ScrollView contentContainerClassName="grow" keyboardShouldPersistTaps="handled">
         <View className="flex-1 items-center justify-center px-6 py-10">
