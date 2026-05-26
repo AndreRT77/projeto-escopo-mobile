@@ -1,4 +1,4 @@
-import { Redirect, Stack, router } from 'expo-router'
+import { Redirect, Stack, router, usePathname } from 'expo-router'
 import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native'
 
 import LogoImg from '@/assets/images/logo-white.png'
@@ -9,6 +9,7 @@ import { useState } from 'react'
 export default function ProtectedLayout() {
   const { isLoggedIn, isReady } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
+  const currentPath = usePathname()
 
   const itensMenu = [
     { id: 1, nome: 'Dashboard', path: '/dashboard' },
@@ -28,6 +29,10 @@ export default function ProtectedLayout() {
 
   const handleNavigate = (path: string) => {
     setMenuOpen(false)
+    if (path === currentPath) {
+      return
+    }
+
     router.push(path)
   }
 
