@@ -2,25 +2,25 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Link, useLocalSearchParams } from 'expo-router'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Image, ScrollView, View } from 'react-native'
 
 import LogoImg from '@/assets/images/logo-white.png'
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
-import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
+import { useAlert } from '@/hooks/useAlert'
 import { useAuth } from '@/hooks/useAuth'
 import { LoginData, loginSchema } from '@/schemas/login.schema'
 import * as auth from '@/services/escopo-api/auth'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function Login() {
-  const [error, setError] = useState('')
   const { login } = useAuth()
   const { email } = useLocalSearchParams<{ email?: string }>()
+  const { showAlert } = useAlert()
 
   const {
     control,
@@ -45,8 +45,6 @@ export default function Login() {
   }, [email, reset])
 
   async function onSubmit({ email, senha }: LoginData) {
-    setError('')
-
     try {
       const response = await auth.login({ email, senha })
 
@@ -58,7 +56,7 @@ export default function Login() {
 
       login()
     } catch (err) {
-      setError(extractApiErrorMessage(err))
+      showAlert(extractApiErrorMessage(err), 'error')
     }
   }
 
@@ -69,8 +67,6 @@ export default function Login() {
       end={{ x: 1, y: 0 }}
       className="flex-1"
     >
-      <Alert visible={!!error} message={error} onClose={() => setError('')} position="top" />
-
       <ScrollView contentContainerClassName="grow" keyboardShouldPersistTaps="handled">
         <View className="flex-1 items-center justify-center px-6 py-10">
           <Image source={LogoImg} resizeMode="contain" className="mb-2 h-24 w-72" />

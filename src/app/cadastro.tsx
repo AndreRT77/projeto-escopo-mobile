@@ -2,20 +2,21 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Link, router } from 'expo-router'
 import { Undo2 } from 'lucide-react-native'
-import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Image, ScrollView, View } from 'react-native'
 
 import LogoImg from '@/assets/images/logo-white.png'
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
-import { Alert } from '@/components/ui/Alert'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
+import { useAlert } from '@/hooks/useAlert'
 import { RegisterData, registerSchema } from '@/schemas/register.schema'
 import * as auth from '@/services/escopo-api/auth'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function Cadastro() {
+  const { showAlert } = useAlert()
+
   const {
     control,
     handleSubmit,
@@ -25,17 +26,15 @@ export default function Cadastro() {
     defaultValues: { nome: '', email: '', senha: '' },
   })
 
-  const [error, setError] = useState('')
-
   async function onSubmit({ nome, email, senha }: RegisterData) {
-    setError('')
-
     try {
       const response = await auth.register({
         nome,
         email,
         senha,
       })
+
+      showAlert('Conta criada com sucesso!', 'success')
 
       router.replace({
         pathname: '/login',
@@ -44,7 +43,7 @@ export default function Cadastro() {
         },
       })
     } catch (err) {
-      setError(extractApiErrorMessage(err))
+      showAlert(extractApiErrorMessage(err), 'error')
     }
   }
 
@@ -55,8 +54,6 @@ export default function Cadastro() {
       end={{ x: 1, y: 0 }}
       className="flex-1"
     >
-      <Alert visible={!!error} message={error} onClose={() => setError('')} position="top" />
-
       <ScrollView contentContainerClassName="grow" keyboardShouldPersistTaps="handled">
         <View className="flex-1 justify-center px-6 py-10">
           <View className="items-center">
