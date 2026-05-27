@@ -8,6 +8,7 @@ export default function Layout() {
       <Stack>
         <Stack.Screen name="(protected)" options={{ headerShown: false, animation: 'none' }} />
         <Stack.Screen name="login" options={{ headerShown: false, animation: 'none' }} />
+        <Stack.Screen name="cadastro" options={{ headerShown: false, animation: 'none' }} />
       </Stack>
     </AuthProvider>
   )
