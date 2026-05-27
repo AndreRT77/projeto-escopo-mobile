@@ -3,26 +3,24 @@ import { ChevronRight, Plus } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import { Image, Pressable, ScrollView, View } from 'react-native'
 
-import { Alert } from '@/components/ui/Alert'
 import { Text } from '@/components/ui/Text'
+import { useAlert } from '@/hooks/useAlert'
 import type { Project } from '@/services/escopo-api/projeto'
 import * as projetoService from '@/services/escopo-api/projeto'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function Projetos() {
   const [projetos, setProjetos] = useState<Project[]>([])
-  const [error, setError] = useState('')
+  const { showAlert } = useAlert()
 
   useEffect(() => {
     async function loadProjects() {
-      setError('')
-
       try {
         const data = await projetoService.getProjects()
 
         setProjetos(data)
       } catch (err) {
-        setError(extractApiErrorMessage(err))
+        showAlert(extractApiErrorMessage(err), 'error')
       }
     }
 
@@ -50,7 +48,6 @@ export default function Projetos() {
           ))}
         </View>
       </ScrollView>
-      <Alert visible={!!error} message={error} onClose={() => setError('')} />
     </View>
   )
 }

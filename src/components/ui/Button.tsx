@@ -1,9 +1,10 @@
+import { ReactNode } from 'react'
 import { ActivityIndicator, TouchableOpacity, TouchableOpacityProps } from 'react-native'
 
 import { Text } from './Text'
 
 type ButtonProps = TouchableOpacityProps & {
-  children: string
+  children: ReactNode
   variant?: 'solid' | 'outline'
   loading?: boolean
 }
@@ -18,23 +19,26 @@ export function Button({
 }: ButtonProps) {
   const isOutline = variant === 'outline'
 
+  const content =
+    typeof children === 'string' ? (
+      <Text className={['font-inter-semibold', isOutline ? 'text-base' : 'text-white'].join(' ')}>
+        {children}
+      </Text>
+    ) : (
+      children
+    )
+
   return (
     <TouchableOpacity
       disabled={disabled || loading}
       className={[
-        'items-center rounded-lg py-4 disabled:opacity-60',
+        'items-center justify-center rounded-lg py-4 disabled:opacity-60',
         isOutline ? 'border-2 border-base' : 'bg-base',
         className,
       ].join(' ')}
       {...props}
     >
-      {loading ? (
-        <ActivityIndicator color={isOutline ? '#552BA9' : 'white'} />
-      ) : (
-        <Text className={['font-inter-semibold', isOutline ? 'text-base' : 'text-white'].join(' ')}>
-          {children}
-        </Text>
-      )}
+      {loading ? <ActivityIndicator color={isOutline ? '#552BA9' : '#FFFFFF'} /> : content}
     </TouchableOpacity>
   )
 }
