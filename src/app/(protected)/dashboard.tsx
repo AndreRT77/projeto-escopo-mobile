@@ -1,56 +1,16 @@
 import { Link } from 'expo-router'
-import { Check, ChevronRight, Folder, FolderOpen, MailOpen, X } from 'lucide-react-native'
+import { Check, ChevronRight, Folder, FolderOpen, X } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, ScrollView, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import iconMailOpen from '@/assets/images/icons/icon-mail-open.png'
 import { Text } from '@/components/ui/Text'
 import { useAlert } from '@/hooks/useAlert'
+import * as conviteService from '@/services/escopo-api/convite'
 import * as dashboardService from '@/services/escopo-api/dashboard'
+import { Convite, Documento } from '@/services/escopo-api/dashboard'
 import { formatDate } from '@/utils/formatters'
-
-interface Documento {
-  id: string | number
-  projeto: string
-  categoria: string
-  documento: string
-}
-
-interface Convite {
-  id: string | number
-  criado_em: string
-  status: { id: number }
-  nome_remetente: string
-  projeto: string
-}
-
-interface DocumentQuickAccessProps {
-  documento: Documento
-}
-
-function DocumentQuickAccess({ documento }: DocumentQuickAccessProps) {
-  if (!documento) return null
-
-  return (
-    <Link href={`/documento/${documento.id}`} asChild>
-      <TouchableOpacity className="mr-3 w-[196px] overflow-hidden rounded-xl border-2 border-cinza-300 bg-white p-4 shadow-sm">
-        <View className="mb-3 flex-row items-center gap-3">
-          <Folder size={24} color="#6B7280" />
-          <ChevronRight size={20} color="#374151" className="ml-auto" />
-        </View>
-        <View>
-          <Text className="font-inter-bold text-lg text-cinza-700" numberOfLines={1}>
-            {documento.projeto || 'Sem título'}
-          </Text>
-          <Text className="mt-1 text-base text-cinza-500">{documento.categoria || 'Geral'}:</Text>
-          <Text className="text-base text-cinza-500" numberOfLines={1}>
-            {documento.documento || 'Sem conteúdo'}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </Link>
-  )
-}
 
 interface InviteProps {
   convite: Convite
@@ -72,7 +32,6 @@ function Invite({ convite, onAnswerInvite }: InviteProps) {
     <View className="mb-3 flex-row items-center justify-between gap-4 rounded-xl border-2 border-cinza-300 bg-white p-4">
       <View className="flex-1">
         <Text className="text-base text-cinza-700">{message}</Text>
-        {data ? <Text className="mt-1 text-sm text-cinza-500">{formatDate(data)}</Text> : null}
       </View>
 
       {/* Interação com o convite */}
@@ -80,23 +39,23 @@ function Invite({ convite, onAnswerInvite }: InviteProps) {
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
             onPress={() => onAnswerInvite(convite.id, 6)}
-            className="flex items-center justify-center rounded-full border border-green-500 p-2"
+            className="flex items-center justify-center rounded-xl border border-green-500 p-2"
           >
-            <Check size={20} color="#22C55E" />
+            <Check size={18} color="#22C55E" />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => onAnswerInvite(convite.id, 2)}
-            className="flex items-center justify-center rounded-full border border-red-500 p-2"
+            className="flex items-center justify-center rounded-xl border border-red-500 p-2"
           >
-            <X size={20} color="#EF4444" />
+            <X size={18} color="#EF4444" />
           </TouchableOpacity>
         </View>
       ) : convite.status?.id === 4 ? (
         <TouchableOpacity
           onPress={() => onAnswerInvite(convite.id, 5)}
-          className="flex items-center justify-center rounded-full border border-green-500 p-2"
+          className="flex items-center justify-center rounded-xl border border-green-500 p-2"
         >
-          <Check size={20} color="#22C55E" />
+          <Check size={18} color="#22C55E" />
         </TouchableOpacity>
       ) : null}
     </View>
@@ -113,7 +72,7 @@ export default function Dashboard() {
     async function loadDashboard() {
       try {
         const data = await dashboardService.getDashboard()
-        // Garantia de fallback caso a API retorne algo nulo
+
         setDocumentos(data?.documentos || [])
         setConvites(data?.convites || [])
       } catch (error) {
@@ -143,7 +102,7 @@ export default function Dashboard() {
 
   async function handleAnswerInvite(conviteId: string | number, statusId: number) {
     try {
-      await dashboardService.answerInvite(conviteId, statusId)
+      await conviteService.atualizarStatus({ conviteId, novoStatusId: statusId })
       setConvites((prev) => prev.filter((convite) => convite.id !== conviteId))
       showAlert('Convite atualizado com sucesso', 'success')
     } catch (error) {
@@ -160,9 +119,9 @@ export default function Dashboard() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1">
       <ScrollView
-        className="flex-1 px-5 py-6"
+        className="flex-1 px-5 py-2"
         contentContainerClassName="pb-12"
         showsVerticalScrollIndicator={false}
       >
@@ -175,7 +134,25 @@ export default function Dashboard() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-2">
             {documentos && documentos.length > 0 ? (
               documentos.map((documento) => (
-                <DocumentQuickAccess key={documento?.id} documento={documento} />
+                <Link href={`/documento/${documento?.id}`} key={documento?.id} asChild>
+                  <TouchableOpacity className="mr-3 w-[196px] overflow-hidden rounded-xl border-2 border-cinza-300 bg-white p-4 shadow-sm">
+                    <View className="mb-3 flex-row items-center gap-3">
+                      <Folder size={24} color="#6B7280" />
+                      <ChevronRight size={20} color="#374151" className="ml-auto" />
+                    </View>
+                    <View>
+                      <Text className="font-inter-bold text-lg text-cinza-700" numberOfLines={1}>
+                        {documento.projeto || 'Sem título'}
+                      </Text>
+                      <Text className="mt-1 text-base text-cinza-500">
+                        {documento.categoria || 'Geral'}
+                      </Text>
+                      <Text className="text-base text-cinza-500" numberOfLines={1}>
+                        {documento.documento || 'Sem conteúdo'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </Link>
               ))
             ) : (
               <View className="mr-3 w-72 flex-row items-center justify-between gap-4 rounded-xl border-2 border-cinza-300 bg-white p-4">
@@ -187,7 +164,7 @@ export default function Dashboard() {
                     As últimas atividades realizadas em documentos aparecerão aqui.
                   </Text>
                 </View>
-                <FolderOpen size={32} color="#9CA3AF" />
+                <FolderOpen size={32} color="#9CA3AF" strokeWidth={1.5} />
               </View>
             )}
           </ScrollView>
@@ -216,14 +193,14 @@ export default function Dashboard() {
               ))
             ) : (
               <View className="rounded-xl border-2 border-cinza-300 bg-white p-6">
-                <Text className="font-inter-bold text-lg text-cinza-700">
+                <Text className="w-full text-center font-inter-bold text-lg text-cinza-700">
                   Sem convites no momento
                 </Text>
-                <Text className="mt-2 text-base text-cinza-500">
+                <Text className="mt-2 w-full text-center text-base text-cinza-500">
                   Quando alguém te convidar para um projeto, o convite irá aparecer aqui.
                 </Text>
-                <View className="mt-4 items-end">
-                  <MailOpen size={32} color="#9CA3AF" />
+                <View className="mt-4 items-center">
+                  <Image source={iconMailOpen} />
                 </View>
               </View>
             )}
