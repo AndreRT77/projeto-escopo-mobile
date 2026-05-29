@@ -38,13 +38,13 @@ function Invite({ convite, onAnswerInvite }: InviteProps) {
       {convite.status?.id === 1 ? (
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
-            onPress={() => onAnswerInvite(convite.id, 6)}
+            onPress={() => onAnswerInvite(convite.id, 6)} // Aceitar
             className="flex items-center justify-center rounded-xl border border-green-500 p-2"
           >
             <Check size={18} color="#22C55E" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => onAnswerInvite(convite.id, 2)}
+            onPress={() => onAnswerInvite(convite.id, 2)} // Rejeitar
             className="flex items-center justify-center rounded-xl border border-red-500 p-2"
           >
             <X size={18} color="#EF4444" />
@@ -52,7 +52,7 @@ function Invite({ convite, onAnswerInvite }: InviteProps) {
         </View>
       ) : convite.status?.id === 4 ? (
         <TouchableOpacity
-          onPress={() => onAnswerInvite(convite.id, 5)}
+          onPress={() => onAnswerInvite(convite.id, 5)} // Outro status de aceite
           className="flex items-center justify-center rounded-xl border border-green-500 p-2"
         >
           <Check size={18} color="#22C55E" />
@@ -77,7 +77,7 @@ export default function Dashboard() {
         setConvites(data?.convites || [])
       } catch (error) {
         console.error(error)
-        showAlert('Erro ao carregar o dashboard', 'error')
+        showAlert('Erro ao carregar o dashboard.', 'error')
       } finally {
         setLoading(false)
       }
@@ -100,13 +100,34 @@ export default function Dashboard() {
     {} as Record<string, Convite[]>,
   )
 
+  // Função para Atualizar o Status do Convite (Aceitar/Rejeitar)
   async function handleAnswerInvite(conviteId: string | number, statusId: number) {
     try {
-      await conviteService.atualizarStatus({ conviteId, novoStatusId: statusId })
+      await conviteService.atualizarStatus({
+        conviteId: conviteId,
+        novoStatusId: statusId,
+      })
+
+      // Remove o convite da lista da UI após responder
       setConvites((prev) => prev.filter((convite) => convite.id !== conviteId))
-      showAlert('Convite atualizado com sucesso', 'success')
+      showAlert('Convite atualizado com sucesso!', 'success')
     } catch (error) {
-      showAlert('Erro ao atualizar convite', 'error')
+      console.error(error)
+      showAlert('Erro ao atualizar o convite.', 'error')
+    }
+  }
+
+  // Função EXTRA caso futuramente você queira Deletar fisicamente o convite
+  async function handleDeleteInvite(conviteId: string | number) {
+    try {
+      // O endpoint excluirConvite espera um 'number'
+      await conviteService.excluirConvite(Number(conviteId))
+
+      setConvites((prev) => prev.filter((convite) => convite.id !== conviteId))
+      showAlert('Convite excluído permanentemente.', 'success')
+    } catch (error) {
+      console.error(error)
+      showAlert('Erro ao excluir o convite.', 'error')
     }
   }
 
