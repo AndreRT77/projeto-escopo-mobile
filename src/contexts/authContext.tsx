@@ -31,9 +31,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     router.replace('/dashboard')
   }
 
-  function logout() {
+  async function logout() {
     setIsLoggedIn(false)
     storageState({ isLoggedIn: false })
+    await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN)
+    await AsyncStorage.removeItem(STORAGE_KEYS.AUTH_USER)
     router.replace('/login')
   }
 
