@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import * as ImagePicker from 'expo-image-picker'
 import { Camera, CreditCard, LogOut, PenLine, X } from 'lucide-react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Image, Modal, ScrollView, TextInput, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -8,14 +9,18 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
+import { STORAGE_KEYS } from '@/constants/storage'
 import { useAlert } from '@/hooks/useAlert'
+import { useAuth } from '@/hooks/useAuth'
 import {
   DeleteData,
   deleteSchema,
   PasswordData,
   passwordSchema,
 } from '@/schemas/configuracao.schema'
+import * as userService from '@/services/escopo-api/usuario'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const plans = [
   {
@@ -67,18 +72,20 @@ function ModalPlanCard({ plan, index, onClose }: any) {
 
 export default function Configuracao() {
   const { showAlert } = useAlert()
+  const { logout } = useAuth()
 
   // Estados do Usuário
-  const [nomeTemp, setNomeTemp] = useState('João Silva')
+  const [userEmail, setUserEmail] = useState<string>('')
+  const [nomeTemp, setNomeTemp] = useState('')
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
 
   // Estados de UI
+  const [loadingUserData, setLoadingUserData] = useState(true)
   const [editingNome, setEditingNome] = useState(false)
   const [savingName, setSavingName] = useState(false)
   const [showPlanos, setShowPlanos] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  // Form de Senha
   const {
     control: passwordControl,
     handleSubmit: handlePasswordSubmit,
@@ -89,7 +96,6 @@ export default function Configuracao() {
     defaultValues: { senhaAtual: '', novaSenha: '', confirmarSenha: '' },
   })
 
-  // Form de Exclusão de Conta
   const {
     control: deleteControl,
     handleSubmit: handleDeleteSubmit,
@@ -100,22 +106,83 @@ export default function Configuracao() {
     defaultValues: { email: '' },
   })
 
-  // Ações
+  useEffect(() => {
+    async function loadUserData() {
+      try {
+        const usuarioString = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_USER)
+
+        if (!usuarioString) {
+          // Trate aqui caso o usuário não seja encontrado (ex: redirecionar para o login)
+          showAlert('Usuário não encontrado. Por favor, faça login novamente.', 'error')
+          setLoadingUserData(false)
+          logout()
+          return
+        }
+
+        const usuarioLogado = JSON.parse(usuarioString)
+        const emailLogado = usuarioLogado.email
+
+        if (!emailLogado) {
+          showAlert('Usuário não encontrado. Por favor, faça login novamente.', 'error')
+          setLoadingUserData(false)
+          logout()
+          return
+        }
+
+        const userData = await userService.getUserByEmail(emailLogado)
+
+        setNomeTemp(userData.nome)
+        setUserEmail(userData.email)
+        setFotoPreview(userData.foto_perfil)
+      } catch (err) {
+        showAlert(extractApiErrorMessage(err), 'error')
+      } finally {
+        setLoadingUserData(false)
+      }
+    }
+
+    loadUserData()
+  }, [])
+
   async function handleFotoChange() {
-    // Aqui você implementaria o ImagePicker do React Native ou Expo
-    showAlert('Funcionalidade de câmera/galeria a ser implementada', 'success')
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      })
+
+      if (!result.canceled) {
+        const asset = result.assets[0]
+
+        const imageFile = {
+          uri: asset.uri,
+          name: asset.fileName || 'profile_photo.jpg',
+          type: asset.mimeType || 'image/jpeg',
+        }
+
+        setFotoPreview(asset.uri)
+
+        const response = await userService.updatePhoto(imageFile as any)
+
+        setFotoPreview(response.url)
+        showAlert('Foto de perfil atualizada com sucesso!', 'success')
+      }
+    } catch (err) {
+      showAlert(extractApiErrorMessage(err), 'error')
+    }
   }
 
   async function handleNomeSave() {
     if (!nomeTemp.trim()) {
-      showAlert('Nome não pode ser vazio', 'error')
+      showAlert('O nome não pode estar vazio', 'error')
       return
     }
 
     try {
       setSavingName(true)
-      // Simulação de API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await userService.updateName(nomeTemp.trim())
       setEditingNome(false)
       showAlert('Nome atualizado com sucesso!', 'success')
     } catch (err) {
@@ -127,7 +194,10 @@ export default function Configuracao() {
 
   async function onSavePassword(data: PasswordData) {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await userService.updatePassword({
+        senha_atual: data.senhaAtual,
+        senha_nova: data.novaSenha,
+      })
       resetPasswordForm()
       showAlert('Senha atualizada com sucesso!', 'success')
     } catch (err) {
@@ -136,15 +206,28 @@ export default function Configuracao() {
   }
 
   async function onDeleteAccount(data: DeleteData) {
+    if (data.email.toLowerCase() !== userEmail.toLowerCase()) {
+      showAlert('O e-mail informado não corresponde à sua conta.', 'error')
+      return
+    }
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      await userService.deleteUser()
       setShowDeleteConfirm(false)
       resetDeleteForm()
       showAlert('Conta excluída com sucesso.', 'success')
-      // router.replace('/login')
+      logout()
     } catch (err) {
       showAlert(extractApiErrorMessage(err), 'error')
     }
+  }
+
+  if (loadingUserData) {
+    return (
+      <SafeAreaView className="flex-1 items-center justify-center bg-cinza-100">
+        <Text className="text-cinza-500">Carregando dados...</Text>
+      </SafeAreaView>
+    )
   }
 
   return (
@@ -217,7 +300,7 @@ export default function Configuracao() {
             )}
 
             {!editingNome && (
-              <Text className="mt-1 text-center text-base text-cinza-500">joao@email.com</Text>
+              <Text className="mt-1 text-center text-base text-cinza-500">{userEmail}</Text>
             )}
           </View>
 
@@ -272,9 +355,7 @@ export default function Configuracao() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => {
-                /* lógica de logout */
-              }}
+              onPress={logout}
               className="flex-row items-center justify-center gap-3 rounded-xl border border-cinza-300 bg-white p-4"
             >
               <LogOut size={24} color="#6B7280" />
