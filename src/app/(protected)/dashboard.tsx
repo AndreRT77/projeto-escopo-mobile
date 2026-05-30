@@ -20,9 +20,6 @@ interface InviteProps {
 function Invite({ convite, onAnswerInvite }: InviteProps) {
   if (!convite) return null
 
-  // Proteção contra criado_em undefined
-  const data = convite.criado_em ? convite.criado_em.split('T')[0] : ''
-
   const message =
     convite.status?.id === 1
       ? `${convite.nome_remetente || 'Alguém'} te enviou um convite para participar do(a) ${convite.projeto || 'projeto'}.`
@@ -114,20 +111,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error(error)
       showAlert('Erro ao atualizar o convite.', 'error')
-    }
-  }
-
-  // Função EXTRA caso futuramente você queira Deletar fisicamente o convite
-  async function handleDeleteInvite(conviteId: string | number) {
-    try {
-      // O endpoint excluirConvite espera um 'number'
-      await conviteService.excluirConvite(Number(conviteId))
-
-      setConvites((prev) => prev.filter((convite) => convite.id !== conviteId))
-      showAlert('Convite excluído permanentemente.', 'success')
-    } catch (error) {
-      console.error(error)
-      showAlert('Erro ao excluir o convite.', 'error')
     }
   }
 
