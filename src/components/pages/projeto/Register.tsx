@@ -1,0 +1,55 @@
+import { ChevronDown, ChevronRight } from 'lucide-react-native'
+import React from 'react'
+import { TouchableOpacity, View } from 'react-native'
+
+import { Text } from '@/components/ui/Text'
+
+export default function Register({ formatRegistros, expandRegsister, setExpandRegister }: any) {
+  return (
+    <View className="gap-6">
+      {Object.entries(formatRegistros).map(([ano, meses]: [string, any]) => (
+        <View key={ano}>
+          <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
+          {Object.entries(meses).map(([mes, registros]: [string, any]) => (
+            <View key={mes} className="mb-4">
+              <TouchableOpacity
+                onPress={() => setExpandRegister((prev: any) => ({ ...prev, [mes]: !prev[mes] }))}
+                className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
+              >
+                <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
+                {expandRegsister[mes] === false ? (
+                  <ChevronRight size={20} color="#7E22CE" />
+                ) : (
+                  <ChevronDown size={20} color="#7E22CE" />
+                )}
+              </TouchableOpacity>
+
+              {expandRegsister[mes] !== false &&
+                registros.map((reg: any) => (
+                  <View
+                    key={reg.id}
+                    className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
+                  >
+                    <View className="flex-row items-start justify-between">
+                      <Text
+                        className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
+                        numberOfLines={1}
+                      >
+                        {reg.titulo}
+                      </Text>
+                      <Text className="text-xs text-cinza-400">
+                        {new Date(reg.criado_em).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
+                      {reg.conteudo}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  )
+}
