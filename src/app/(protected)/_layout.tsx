@@ -33,7 +33,7 @@ export default function ProtectedLayout() {
       return
     }
 
-    router.push(path)
+    router.replace(path)
   }
 
   return (

@@ -1,8 +1,9 @@
 import { Stack } from 'expo-router'
 
+import '@/global.css'
+
 import { AlertProvider } from '@/contexts/AlertContext'
 import { AuthProvider } from '@/contexts/authContext'
-import '@/global.css'
 
 export default function Layout() {
   return (
