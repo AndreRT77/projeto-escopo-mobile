@@ -143,8 +143,9 @@ export default function ProjectDetails() {
   }
 
   // Agrupamentos
-  const formatRegistros = registros.reduce(
-    (acc: GroupedData<registroService.Registro>, registro) => {
+  const formatRegistros = [...registros]
+    .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
+    .reduce((acc: GroupedData<registroService.Registro>, registro) => {
       const data = new Date(registro.criado_em)
       const ano = data.getFullYear()
       const mes = data.toLocaleDateString('pt-BR', { month: 'long' })
@@ -155,22 +156,22 @@ export default function ProjectDetails() {
       acc[ano][mesFormatado].push(registro)
 
       return acc
-    },
-    {},
-  )
+    }, {})
 
-  const formatReunioes = reunioes.reduce((acc: GroupedData<reuniaoService.Reuniao>, reuniao) => {
-    const data = new Date(reuniao.criado_em)
-    const ano = data.getFullYear()
-    const mes = data.toLocaleDateString('pt-BR', { month: 'long' })
-    const mesFormatado = mes.charAt(0).toUpperCase() + mes.slice(1)
+  const formatReunioes = [...reunioes]
+    .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
+    .reduce((acc: GroupedData<reuniaoService.Reuniao>, reuniao) => {
+      const data = new Date(reuniao.criado_em)
+      const ano = data.getFullYear()
+      const mes = data.toLocaleDateString('pt-BR', { month: 'long' })
+      const mesFormatado = mes.charAt(0).toUpperCase() + mes.slice(1)
 
-    if (!acc[ano]) acc[ano] = {}
-    if (!acc[ano][mesFormatado]) acc[ano][mesFormatado] = []
-    acc[ano][mesFormatado].push(reuniao)
+      if (!acc[ano]) acc[ano] = {}
+      if (!acc[ano][mesFormatado]) acc[ano][mesFormatado] = []
+      acc[ano][mesFormatado].push(reuniao)
 
-    return acc
-  }, {})
+      return acc
+    }, {})
 
   const hasAcessoPrivilegiado = project?.nivel_acesso_id === 1 || project?.nivel_acesso_id === 2
 
@@ -183,7 +184,8 @@ export default function ProjectDetails() {
             <Text className="font-inter-bold text-2xl text-cinza-700">{project?.titulo}</Text>
             {project?.nivel_acesso_id === 1 && (
               <TouchableOpacity>
-                <PenLine size={20} color="#7E22CE" />
+                <PenLine size={20} color="#7E22CE" />{' '}
+                {/* TODO: Implementar redirecionamento para tela de editar projeto */}
               </TouchableOpacity>
             )}
           </View>
@@ -265,7 +267,7 @@ export default function ProjectDetails() {
             {hasAcessoPrivilegiado && (
               <Button
                 onPress={() => setOpenModalCategoria(true)}
-                className="w-full max-w-[200px] flex-row items-center gap-2"
+                className="mb-4 w-full flex-row items-center gap-2"
               >
                 <FolderPlus size={20} color="#FFFFFF" />
                 <Text className="font-inter-bold text-white">Nova Categoria</Text>
@@ -275,7 +277,7 @@ export default function ProjectDetails() {
             <Documentos
               documentos={documentos}
               deletarCategoria={handleDeletarCategoria}
-              project={project}
+              projeto={project}
             />
           </View>
         )}
@@ -286,6 +288,7 @@ export default function ProjectDetails() {
               <Button className="mb-4 w-full flex-row items-center gap-2">
                 <Plus size={20} color="#FFFFFF" />
                 <Text className="font-inter-bold text-white">Novo Registro</Text>
+                {/* TODO: Implementar criação de registro já com redirecionamento para a tela de edição dele */}
               </Button>
             )}
 

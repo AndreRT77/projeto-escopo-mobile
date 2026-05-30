@@ -9,17 +9,17 @@ import * as projetoService from '@/services/escopo-api/projeto'
 interface DocumentosProps {
   documentos: CategoriasComDocumentos | null
   deletarCategoria: (categoriaId: number) => void
-  project: projetoService.DetalhesDoProjeto | null
+  projeto: projetoService.DetalhesDoProjeto | null
 }
 
-export default function Documentos({ documentos, deletarCategoria, project }: DocumentosProps) {
+export default function Documentos({ documentos, deletarCategoria, projeto }: DocumentosProps) {
   return (
     <View className="w-full gap-6">
       {documentos?.projeto?.categorias?.map((doc) => (
         <View key={doc.id} className="w-full">
-          <View className="mb-2 flex-row items-center justify-between">
+          <View className="mb-2 flex-row items-center justify-between px-2">
             <Text className="font-inter-bold text-lg text-cinza-600">{doc.nome}</Text>
-            {(project?.nivel_acesso_id === 1 || project?.nivel_acesso_id === 2) && (
+            {(projeto?.nivel_acesso_id === 1 || projeto?.nivel_acesso_id === 2) && (
               <TouchableOpacity onPress={() => deletarCategoria(doc.id)}>
                 <Trash2 size={20} color="#EF4444" />
               </TouchableOpacity>
@@ -49,10 +49,11 @@ export default function Documentos({ documentos, deletarCategoria, project }: Do
               </TouchableOpacity>
             ))}
 
-            {(project?.nivel_acesso_id === 1 || project?.nivel_acesso_id === 2) && (
+            {(projeto?.nivel_acesso_id === 1 || projeto?.nivel_acesso_id === 2) && (
               <TouchableOpacity className="mt-4 flex-row items-center justify-center gap-2 rounded-xl border border-dashed border-purple-300 py-3">
                 <FilePlus size={18} color="#7E22CE" />
                 <Text className="font-inter-bold text-purple-700">Novo Documento</Text>
+                {/* TODO: Implementar criação de um documento já com redirecionamento para a tela de edição dele */}
               </TouchableOpacity>
             )}
           </View>

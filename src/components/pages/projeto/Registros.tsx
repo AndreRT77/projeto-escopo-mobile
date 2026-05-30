@@ -4,13 +4,28 @@ import { TouchableOpacity, View } from 'react-native'
 
 import { Text } from '@/components/ui/Text'
 import { GroupedData } from '@/schemas/projeto.schema'
-import { Registro } from '@/services/escopo-api/registro'
+import * as registroService from '@/services/escopo-api/registro'
 
 interface RegistrosProps {
-  formatRegistros: GroupedData<Registro>
+  formatRegistros: GroupedData<registroService.Registro>
   expandRegister: Record<string, boolean>
   setExpandRegister: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
 }
+
+const ORDEM_MESES = [
+  'Janeiro',
+  'Fevereiro',
+  'Março',
+  'Abril',
+  'Maio',
+  'Junho',
+  'Julho',
+  'Agosto',
+  'Setembro',
+  'Outubro',
+  'Novembro',
+  'Dezembro',
+]
 
 export default function Registros({
   formatRegistros,
@@ -19,49 +34,54 @@ export default function Registros({
 }: RegistrosProps) {
   return (
     <View className="gap-6">
-      {Object.entries(formatRegistros).map(([ano, meses]) => (
-        <View key={ano}>
-          <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
-          {Object.entries(meses).map(([mes, registros]) => (
-            <View key={mes} className="mb-4">
-              <TouchableOpacity
-                onPress={() => setExpandRegister((prev) => ({ ...prev, [mes]: !prev[mes] }))}
-                className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
-              >
-                <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
-                {expandRegister[mes] === false ? (
-                  <ChevronRight size={20} color="#7E22CE" />
-                ) : (
-                  <ChevronDown size={20} color="#7E22CE" />
-                )}
-              </TouchableOpacity>
+      {Object.entries(formatRegistros)
+        .sort(([anoA], [anoB]) => Number(anoB) - Number(anoA)) // Anos mais recentes primeiro
+        .map(([ano, meses]) => (
+          <View key={ano}>
+            <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
 
-              {expandRegister[mes] !== false &&
-                registros.map((reg) => (
-                  <View
-                    key={reg.id}
-                    className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
+            {Object.entries(meses)
+              .sort(([mesA], [mesB]) => ORDEM_MESES.indexOf(mesB) - ORDEM_MESES.indexOf(mesA)) // Meses mais recentes primeiro
+              .map(([mes, registros]) => (
+                <View key={mes} className="mb-4">
+                  <TouchableOpacity
+                    onPress={() => setExpandRegister((prev) => ({ ...prev, [mes]: !prev[mes] }))}
+                    className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
                   >
-                    <View className="flex-row items-start justify-between">
-                      <Text
-                        className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
-                        numberOfLines={1}
+                    <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
+                    {expandRegister[mes] === false ? (
+                      <ChevronRight size={20} color="#7E22CE" />
+                    ) : (
+                      <ChevronDown size={20} color="#7E22CE" />
+                    )}
+                  </TouchableOpacity>
+
+                  {expandRegister[mes] !== false &&
+                    registros.map((reg) => (
+                      <View
+                        key={reg.id}
+                        className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
                       >
-                        {reg.titulo}
-                      </Text>
-                      <Text className="text-xs text-cinza-400">
-                        {new Date(reg.criado_em).toLocaleDateString('pt-BR')}
-                      </Text>
-                    </View>
-                    <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
-                      {reg.conteudo}
-                    </Text>
-                  </View>
-                ))}
-            </View>
-          ))}
-        </View>
-      ))}
+                        <View className="flex-row items-start justify-between">
+                          <Text
+                            className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
+                            numberOfLines={1}
+                          >
+                            {reg.titulo}
+                          </Text>
+                          <Text className="text-xs text-cinza-400">
+                            {new Date(reg.criado_em).toLocaleDateString('pt-BR')}
+                          </Text>
+                        </View>
+                        <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
+                          {reg.conteudo}
+                        </Text>
+                      </View>
+                    ))}
+                </View>
+              ))}
+          </View>
+        ))}
     </View>
   )
 }
