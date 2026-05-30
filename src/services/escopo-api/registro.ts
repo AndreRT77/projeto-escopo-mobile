@@ -26,3 +26,37 @@ export async function criarRegistroEmUmProjeto(
 
   return response.data
 }
+
+export async function atualizarTitulo(
+  registroId: string | number,
+  body: {
+    titulo: string
+  },
+) {
+  const response = await api.patch(`${ENV.API_URL}/api/v1/registro/${registroId}/titulo`, body)
+
+  return response.data
+}
+
+export async function atualizarConteudo(
+  registroId: string | number,
+  body: {
+    conteudo: string
+  },
+) {
+  const response = await api.patch(`${ENV.API_URL}/api/v1/registro/${registroId}/conteudo`, body)
+
+  return response.data
+}
+
+export async function obterDetalhesDeUmRegistro(registroId: string | number): Promise<Registro> {
+  const response = await api.get(`${ENV.API_URL}/api/v1/registro/${registroId}`)
+
+  return response.data
+}
+
+export async function excluirRegistro(registroId: string | number) {
+  const response = await api.delete(`${ENV.API_URL}/api/v1/registro/${registroId}`)
+
+  return response.data
+}
