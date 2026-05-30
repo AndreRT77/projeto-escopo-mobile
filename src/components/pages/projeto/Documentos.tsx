@@ -3,11 +3,19 @@ import React from 'react'
 import { TouchableOpacity, View } from 'react-native'
 
 import { Text } from '@/components/ui/Text'
+import { CategoriasComDocumentos } from '@/services/escopo-api/documento'
+import * as projetoService from '@/services/escopo-api/projeto'
 
-export default function Documents({ documentos, deletarCategoria, project }: any) {
+interface DocumentosProps {
+  documentos: CategoriasComDocumentos | null
+  deletarCategoria: (categoriaId: number) => void
+  project: projetoService.DetalhesDoProjeto | null
+}
+
+export default function Documentos({ documentos, deletarCategoria, project }: DocumentosProps) {
   return (
     <View className="w-full gap-6">
-      {documentos?.projeto?.categorias?.map((doc: any) => (
+      {documentos?.projeto?.categorias?.map((doc) => (
         <View key={doc.id} className="w-full">
           <View className="mb-2 flex-row items-center justify-between">
             <Text className="font-inter-bold text-lg text-cinza-600">{doc.nome}</Text>
@@ -19,7 +27,7 @@ export default function Documents({ documentos, deletarCategoria, project }: any
           </View>
 
           <View className="rounded-2xl border border-cinza-300 bg-white p-4">
-            {doc.documentos.map((subdoc: any) => (
+            {doc.documentos.map((subdoc) => (
               <TouchableOpacity
                 key={subdoc.id}
                 className="flex-row items-center justify-between border-b border-cinza-100 py-3 last:border-0"
@@ -29,7 +37,7 @@ export default function Documents({ documentos, deletarCategoria, project }: any
                     {subdoc.titulo}
                   </Text>
                   <Text className="text-xs text-cinza-400">
-                    Alterado em: {new Date(subdoc.ultima_alteracao).toLocaleDateString()}
+                    Alterado em: {new Date(subdoc.ultima_alteracao).toLocaleDateString('pt-BR')}
                   </Text>
                 </View>
 

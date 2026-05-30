@@ -1,149 +1,165 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams } from 'expo-router'
-import { FolderPlus, Plus, X } from 'lucide-react-native'
+import { ChevronDown, ChevronUp, FolderPlus, PenLine, Plus } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
-import { Modal, ScrollView, TextInput, TouchableOpacity, View } from 'react-native'
+import { useForm } from 'react-hook-form'
+import { ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import ComponentMenu from '@/components/pages/projeto/ComponentMenu'
-import DescriptionProject from '@/components/pages/projeto/DescriptionProject'
-import Documents from '@/components/pages/projeto/Documents'
-import Meeting from '@/components/pages/projeto/Meeting'
-import Register from '@/components/pages/projeto/Register'
+import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
+import Documentos from '@/components/pages/projeto/Documentos'
+import { FormModal } from '@/components/pages/projeto/FormModal'
+import Registros from '@/components/pages/projeto/Registros'
+import Reunioes from '@/components/pages/projeto/Reunioes'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
+import { useAlert } from '@/hooks/useAlert'
+import {
+  CategoriaData,
+  GroupedData,
+  ReuniaoData,
+  categoriaSchema,
+  reuniaoSchema,
+} from '@/schemas/projeto.schema'
 import * as categoriaService from '@/services/escopo-api/categoria'
 import * as documentoService from '@/services/escopo-api/documento'
 import * as projetoService from '@/services/escopo-api/projeto'
 import * as registroService from '@/services/escopo-api/registro'
 import * as reuniaoService from '@/services/escopo-api/reuniao'
+import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function ProjectDetails() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const { showAlert } = useAlert()
 
   // Estados de Dados
-  const [project, setProject] = useState<any>(null)
-  const [documentos, setDocumentos] = useState<any[]>([])
+  const [project, setProject] = useState<projetoService.DetalhesDoProjeto | null>(null)
+  const [documentos, setDocumentos] = useState<documentoService.CategoriasComDocumentos | null>(
+    null,
+  )
   const [registros, setRegistros] = useState<registroService.Registro[]>([])
-  const [reunioes, setReunioes] = useState<any[]>([])
+  const [reunioes, setReunioes] = useState<reuniaoService.Reuniao[]>([])
 
-  // Estados de UI e Controle
+  // Estados de UI
   const tabs = ['Documentos', 'Registros', 'Reuniões']
   const [currentTab, setCurrentTab] = useState('Documentos')
   const [expand, setExpand] = useState(false)
-  const [expandRegsister, setExpandRegister] = useState({})
-  const [expandReuniao, setExpandReuniao] = useState({})
+  const [expandRegister, setExpandRegister] = useState<Record<string, boolean>>({})
+  const [expandReuniao, setExpandReuniao] = useState<Record<string, boolean>>({})
 
-  // Estados dos Modais
   const [openModalCategoria, setOpenModalCategoria] = useState(false)
   const [openModalReuniao, setOpenModalReuniao] = useState(false)
-  const [nomeCategoria, setNomeCategoria] = useState('')
-  const [nomeReuniao, setNomeReuniao] = useState('')
+
+  const {
+    control: controlCategoria,
+    handleSubmit: handleSubmitCategoria,
+    reset: resetCategoria,
+  } = useForm<CategoriaData>({
+    resolver: zodResolver(categoriaSchema),
+    defaultValues: { titulo: '' },
+  })
+
+  const {
+    control: controlReuniao,
+    handleSubmit: handleSubmitReuniao,
+    reset: resetReuniao,
+  } = useForm<ReuniaoData>({
+    resolver: zodResolver(reuniaoSchema),
+    defaultValues: { titulo: '' },
+  })
 
   useEffect(() => {
-    async function carregarProjeto() {
-      if (!id) {
-        return
-      }
+    async function carregarDadosIniciais() {
+      if (!id) return
 
       try {
-        const data = await projetoService.obterDetalhesDoProjetoPorId(id)
-        const dataDoc = await documentoService.obterCategoriasComDocumentoDeUmProjeto(id)
+        const [dataProjeto, dataDoc, dataReg, dataMeeting] = await Promise.all([
+          projetoService.obterDetalhesDoProjetoPorId(id),
+          documentoService.obterCategoriasComDocumentoDeUmProjeto(id),
+          registroService.obterRegistrosDeUmProjeto(id),
+          reuniaoService.obterReunioesDeUmProjeto(id),
+        ])
 
-        setProject(data)
+        setProject(dataProjeto)
         setDocumentos(dataDoc)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    carregarProjeto()
-  }, [id])
-
-  useEffect(() => {
-    async function carregarRegistros() {
-      if (!id) {
-        return
-      }
-
-      try {
-        const dataReg = await registroService.obterRegistrosDeUmProjeto(id)
         setRegistros(dataReg)
-      } catch (error) {
-        console.error(error)
-      }
-    }
-
-    carregarRegistros()
-  }, [id])
-
-  useEffect(() => {
-    async function carregarReunioes() {
-      if (!id) {
-        return
-      }
-
-      try {
-        const dataMeeting = await reuniaoService.obterReunioesDeUmProjeto(id)
         setReunioes(dataMeeting)
       } catch (error) {
-        console.error(error)
+        showAlert(extractApiErrorMessage(error), 'error')
       }
     }
 
-    carregarReunioes()
+    carregarDadosIniciais()
   }, [id])
 
-  async function handleNovaCategoria() {
+  async function onSubmitCategoria(data: CategoriaData) {
+    if (!id) return
+
     try {
-      await categoriaService.criarCategoria(id, { titulo: nomeCategoria })
+      await categoriaService.criarCategoria(id, { titulo: data.titulo })
       const dataDoc = await documentoService.obterCategoriasComDocumentoDeUmProjeto(id)
 
       setDocumentos(dataDoc)
-      setNomeCategoria('') // Limpar o input após salvar
-      setOpenModalCategoria(false)
+      fecharModalCategoria()
     } catch (error) {
-      console.error(error)
+      showAlert(extractApiErrorMessage(error), 'error')
     }
   }
 
-  async function handleNovaReuniao() {
-    try {
-      const nameMeeting = { titulo: nomeReuniao }
-      await reuniaoService.criarReuniaoEmUmProjeto(id, nameMeeting)
-      const dataDoc = await reuniaoService.obterReunioesDeUmProjeto(id)
+  async function onSubmitReuniao(data: ReuniaoData) {
+    if (!id) return
 
-      setReunioes(dataDoc)
-      setNomeReuniao('') // Limpar o input após salvar
-      setOpenModalReuniao(false)
+    try {
+      await reuniaoService.criarReuniaoEmUmProjeto(id, { titulo: data.titulo })
+      const dataMeeting = await reuniaoService.obterReunioesDeUmProjeto(id)
+
+      setReunioes(dataMeeting)
+      fecharModalReuniao()
     } catch (error) {
-      console.error(error)
+      showAlert(extractApiErrorMessage(error), 'error')
     }
   }
 
   async function handleDeletarCategoria(categoriaId: string | number) {
+    if (!id) return
+
     try {
       await categoriaService.excluirCategoria(categoriaId)
       const dataDoc = await documentoService.obterCategoriasComDocumentoDeUmProjeto(id)
       setDocumentos(dataDoc)
     } catch (error) {
-      console.log(error)
+      showAlert(extractApiErrorMessage(error), 'error')
     }
   }
 
-  const formatRegistros = registros.reduce((acc: any, registro: any) => {
-    const data = new Date(registro.criado_em)
-    const ano = data.getFullYear()
-    const mes = data.toLocaleDateString('pt-BR', { month: 'long' })
-    const mesFormatado = mes.charAt(0).toUpperCase() + mes.slice(1)
+  function fecharModalCategoria() {
+    setOpenModalCategoria(false)
+    resetCategoria()
+  }
 
-    if (!acc[ano]) acc[ano] = {}
-    if (!acc[ano][mesFormatado]) acc[ano][mesFormatado] = []
-    acc[ano][mesFormatado].push(registro)
+  function fecharModalReuniao() {
+    setOpenModalReuniao(false)
+    resetReuniao()
+  }
 
-    return acc
-  }, {})
+  // Agrupamentos
+  const formatRegistros = registros.reduce(
+    (acc: GroupedData<registroService.Registro>, registro) => {
+      const data = new Date(registro.criado_em)
+      const ano = data.getFullYear()
+      const mes = data.toLocaleDateString('pt-BR', { month: 'long' })
+      const mesFormatado = mes.charAt(0).toUpperCase() + mes.slice(1)
 
-  const formatReunioes = reunioes.reduce((acc: any, reuniao: any) => {
+      if (!acc[ano]) acc[ano] = {}
+      if (!acc[ano][mesFormatado]) acc[ano][mesFormatado] = []
+      acc[ano][mesFormatado].push(registro)
+
+      return acc
+    },
+    {},
+  )
+
+  const formatReunioes = reunioes.reduce((acc: GroupedData<reuniaoService.Reuniao>, reuniao) => {
     const data = new Date(reuniao.criado_em)
     const ano = data.getFullYear()
     const mes = data.toLocaleDateString('pt-BR', { month: 'long' })
@@ -159,15 +175,91 @@ export default function ProjectDetails() {
   const hasAcessoPrivilegiado = project?.nivel_acesso_id === 1 || project?.nivel_acesso_id === 2
 
   return (
-    <SafeAreaView className="flex-1 bg-cinza-100">
-      <ScrollView className="flex-1 px-5 py-6">
-        <DescriptionProject project={project} expand={expand} setExpand={setExpand} />
+    <SafeAreaView className="flex-1">
+      <ScrollView className="flex-1 px-5">
+        {/* Detalhes do projeto */}
+        <View className="w-full p-2">
+          <View className="flex-row items-center gap-2">
+            <Text className="font-inter-bold text-2xl text-cinza-700">{project?.titulo}</Text>
+            {project?.nivel_acesso_id === 1 && (
+              <TouchableOpacity>
+                <PenLine size={20} color="#7E22CE" />
+              </TouchableOpacity>
+            )}
+          </View>
 
-        <View className="mt-6">
-          <ComponentMenu currentTab={currentTab} setCurrentTab={setCurrentTab} tabs={tabs} />
+          <View className="mt-3 gap-2">
+            <Text className="text-base text-cinza-600">
+              Status:{' '}
+              <Text className="font-inter-bold">
+                {project?.status ? 'Concluído' : 'Em andamento'}
+              </Text>
+            </Text>
+
+            <View className={expand ? 'gap-2' : 'flex-row items-end justify-between'}>
+              <Text
+                numberOfLines={expand ? undefined : 2}
+                className="flex-1 text-base text-cinza-600"
+              >
+                Descrição: {project?.descricao}
+              </Text>
+
+              {expand ? (
+                <View className="mt-2 w-full">
+                  <View className="gap-1 rounded-xl border border-cinza-200 bg-white p-3">
+                    <Text className="text-sm text-cinza-500">
+                      Data de Criação:{' '}
+                      {project?.data_criacao
+                        ? new Date(project.data_criacao).toLocaleDateString('pt-BR')
+                        : '---'}
+                    </Text>
+                    <Text className="text-sm text-cinza-500">
+                      Última Alteração:{' '}
+                      {project?.ultima_atualizacao
+                        ? new Date(project.ultima_atualizacao).toLocaleDateString('pt-BR')
+                        : '---'}
+                    </Text>
+                    <Text className="text-sm text-cinza-500">
+                      Responsável: {project?.nome_responsavel}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setExpand(false)} className="mt-2 self-center">
+                    <ChevronUp size={24} color="#7E22CE" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity onPress={() => setExpand(true)}>
+                  <ChevronDown size={24} color="#7E22CE" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         </View>
 
-        {/* Aba: Documentos */}
+        {/* Seções: Documentos, Registros e Reuniões */}
+        <View className="mt-6">
+          <View className="flex-row items-center justify-between">
+            {tabs.map((tab) => {
+              const isActive = currentTab === tab
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  onPress={() => setCurrentTab(tab)}
+                  className={`rounded-full px-4 py-2 ${isActive ? 'bg-purple-100' : 'bg-cinza-200'}`}
+                >
+                  <Text
+                    className={`text-sm ${
+                      isActive ? 'font-inter-bold text-purple-700' : 'text-cinza-700'
+                    }`}
+                  >
+                    {tab}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </View>
+
         {currentTab === 'Documentos' && (
           <View className="mt-6 flex-col items-center gap-4 pb-10">
             {hasAcessoPrivilegiado && (
@@ -180,7 +272,7 @@ export default function ProjectDetails() {
               </Button>
             )}
 
-            <Documents
+            <Documentos
               documentos={documentos}
               deletarCategoria={handleDeletarCategoria}
               project={project}
@@ -188,7 +280,6 @@ export default function ProjectDetails() {
           </View>
         )}
 
-        {/* Aba: Registros */}
         {currentTab === 'Registros' && (
           <View className="mt-6 pb-10">
             {hasAcessoPrivilegiado && (
@@ -198,15 +289,14 @@ export default function ProjectDetails() {
               </Button>
             )}
 
-            <Register
-              expandRegsister={expandRegsister}
+            <Registros
+              expandRegister={expandRegister}
               setExpandRegister={setExpandRegister}
               formatRegistros={formatRegistros}
             />
           </View>
         )}
 
-        {/* Aba: Reuniões */}
         {currentTab === 'Reuniões' && (
           <View className="mt-6 pb-10">
             {hasAcessoPrivilegiado && (
@@ -219,7 +309,7 @@ export default function ProjectDetails() {
               </Button>
             )}
 
-            <Meeting
+            <Reunioes
               expandReuniao={expandReuniao}
               setExpandReuniao={setExpandReuniao}
               formatReunioes={formatReunioes}
@@ -228,81 +318,37 @@ export default function ProjectDetails() {
         )}
       </ScrollView>
 
-      {/* Modal: Adicionar Categoria */}
-      <Modal
-        transparent
+      <FormModal
         visible={openModalCategoria}
-        animationType="fade"
-        onRequestClose={() => setOpenModalCategoria(false)}
+        onClose={fecharModalCategoria}
+        title="Adicionar Categoria"
       >
-        <View className="flex-1 items-center justify-center bg-black/40 px-4">
-          <View className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-external">
-            <TouchableOpacity
-              onPress={() => setOpenModalCategoria(false)}
-              className="absolute right-4 top-4 z-10"
-            >
-              <X size={24} color="#374151" />
-            </TouchableOpacity>
-
-            <Text className="mb-6 mt-2 text-center font-inter-bold text-2xl text-cinza-700">
-              Adicionar Categoria
-            </Text>
-
-            <View className="mb-6">
-              <Text className="mb-2 font-inter-bold text-sm text-cinza-700">
-                Título da Categoria
-              </Text>
-              <TextInput
-                value={nomeCategoria}
-                onChangeText={setNomeCategoria}
-                placeholder="Nova Categoria"
-                className="w-full rounded-2xl border border-cinza-300 bg-cinza-100 px-4 py-3 text-base text-cinza-700"
-              />
-            </View>
-
-            <Button onPress={handleNovaCategoria} className="w-full">
-              Salvar Categoria
-            </Button>
-          </View>
+        <View className="mb-6">
+          <LabelWithTextInput
+            control={controlCategoria}
+            name="titulo"
+            label="Título da Categoria"
+            placeholder="Ex: Contratos"
+          />
         </View>
-      </Modal>
+        <Button onPress={handleSubmitCategoria(onSubmitCategoria)} className="w-full">
+          Salvar Categoria
+        </Button>
+      </FormModal>
 
-      {/* Modal: Nova Reunião */}
-      <Modal
-        transparent
-        visible={openModalReuniao}
-        animationType="fade"
-        onRequestClose={() => setOpenModalReuniao(false)}
-      >
-        <View className="flex-1 items-center justify-center bg-black/40 px-4">
-          <View className="relative w-full max-w-md rounded-[32px] bg-white p-6 shadow-external">
-            <TouchableOpacity
-              onPress={() => setOpenModalReuniao(false)}
-              className="absolute right-4 top-4 z-10"
-            >
-              <X size={24} color="#374151" />
-            </TouchableOpacity>
-
-            <Text className="mb-6 mt-2 text-center font-inter-bold text-2xl text-cinza-700">
-              Nova Reunião
-            </Text>
-
-            <View className="mb-6">
-              <Text className="mb-2 font-inter-bold text-sm text-cinza-700">Título da Reunião</Text>
-              <TextInput
-                value={nomeReuniao}
-                onChangeText={setNomeReuniao}
-                placeholder="Nome da reunião"
-                className="w-full rounded-2xl border border-cinza-300 bg-cinza-100 px-4 py-3 text-base text-cinza-700"
-              />
-            </View>
-
-            <Button onPress={handleNovaReuniao} className="w-full">
-              Salvar Reunião
-            </Button>
-          </View>
+      <FormModal visible={openModalReuniao} onClose={fecharModalReuniao} title="Nova Reunião">
+        <View className="mb-6">
+          <LabelWithTextInput
+            control={controlReuniao}
+            name="titulo"
+            label="Título da Reunião"
+            placeholder="Ex: Alinhamento de Sprint"
+          />
         </View>
-      </Modal>
+        <Button onPress={handleSubmitReuniao(onSubmitReuniao)} className="w-full">
+          Salvar Reunião
+        </Button>
+      </FormModal>
     </SafeAreaView>
   )
 }

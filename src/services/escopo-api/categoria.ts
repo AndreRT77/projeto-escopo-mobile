@@ -7,7 +7,10 @@ export async function excluirCategoria(id: number | string) {
   return response.data
 }
 
-export async function criarCategoria(projetoId: number | string, body: { titulo: string }) {
+export async function criarCategoria(
+  projetoId: number | string,
+  body: { titulo: string },
+): Promise<{ id: number }> {
   const response = await api.post(`${ENV.API_URL}/api/v1/projeto/${projetoId}/categoria`, body)
 
   return response.data

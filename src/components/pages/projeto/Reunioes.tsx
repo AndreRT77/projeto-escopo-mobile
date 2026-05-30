@@ -4,20 +4,32 @@ import React from 'react'
 import { Image, TouchableOpacity, View } from 'react-native'
 
 import { Text } from '@/components/ui/Text'
+import { GroupedData } from '@/schemas/projeto.schema'
+import { Reuniao } from '@/services/escopo-api/reuniao'
 
-export default function Meeting({ formatReunioes, expandReuniao, setExpandReuniao }: any) {
+interface ReunioesProps {
+  formatReunioes: GroupedData<Reuniao>
+  expandReuniao: Record<string, boolean>
+  setExpandReuniao: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+}
+
+export default function Reunioes({
+  formatReunioes,
+  expandReuniao,
+  setExpandReuniao,
+}: ReunioesProps) {
   const router = useRouter()
 
   return (
     <View className="gap-6">
-      {Object.entries(formatReunioes).map(([ano, meses]: [string, any]) => (
+      {Object.entries(formatReunioes).map(([ano, meses]) => (
         <View key={ano}>
           <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
 
-          {Object.entries(meses).map(([mes, reunioes]: [string, any]) => (
+          {Object.entries(meses).map(([mes, reunioes]) => (
             <View key={mes} className="mb-4">
               <TouchableOpacity
-                onPress={() => setExpandReuniao((prev: any) => ({ ...prev, [mes]: !prev[mes] }))}
+                onPress={() => setExpandReuniao((prev) => ({ ...prev, [mes]: !prev[mes] }))}
                 className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
               >
                 <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
@@ -29,7 +41,7 @@ export default function Meeting({ formatReunioes, expandReuniao, setExpandReunia
               </TouchableOpacity>
 
               {expandReuniao[mes] !== false &&
-                reunioes.map((reuniao: any) => (
+                reunioes.map((reuniao) => (
                   <TouchableOpacity
                     key={reuniao.id}
                     onPress={() => router.push(`/reuniao/${reuniao.id}`)}
@@ -40,12 +52,13 @@ export default function Meeting({ formatReunioes, expandReuniao, setExpandReunia
                         {reuniao.titulo}
                       </Text>
                       <Text className="text-xs text-cinza-500">
-                        {new Date(reuniao.criado_em).toLocaleDateString()}
+                        {new Date(reuniao.criado_em).toLocaleDateString('pt-BR')}
                       </Text>
                     </View>
 
                     <View className="flex-row-reverse">
-                      {reuniao.foto_usuarios?.slice(0, 4).map((foto: string, idx: number) => (
+                      {/* O TypeScript agora entende automaticamente que 'foto' é uma string */}
+                      {reuniao.foto_usuarios?.slice(0, 4).map((foto, idx) => (
                         <View
                           key={idx}
                           className="-mr-3 h-8 w-8 overflow-hidden rounded-full border-2 border-white bg-cinza-200"

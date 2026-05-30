@@ -2,6 +2,7 @@ import { ENV } from '@/constants/env'
 import { api } from '@/services/api'
 
 export interface Reuniao {
+  id: number
   titulo: string
   criado_em: string
   foto_usuarios: string[]

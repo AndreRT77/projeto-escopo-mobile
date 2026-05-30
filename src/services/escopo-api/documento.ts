@@ -1,7 +1,7 @@
 import { ENV } from '@/constants/env'
 import { api } from '@/services/api'
 
-export interface CategoriasComDocumentosResponse {
+export interface CategoriasComDocumentos {
   projeto: {
     id: number
     categorias: {
@@ -19,7 +19,7 @@ export interface CategoriasComDocumentosResponse {
 
 export async function obterCategoriasComDocumentoDeUmProjeto(
   projetoId: string | number,
-): Promise<CategoriasComDocumentosResponse> {
+): Promise<CategoriasComDocumentos> {
   const response = await api.get(`${ENV.API_URL}/api/v1/projeto/${projetoId}/categorias/documentos`)
 
   return response.data

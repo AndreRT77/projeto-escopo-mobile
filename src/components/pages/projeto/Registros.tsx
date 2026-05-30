@@ -3,29 +3,41 @@ import React from 'react'
 import { TouchableOpacity, View } from 'react-native'
 
 import { Text } from '@/components/ui/Text'
+import { GroupedData } from '@/schemas/projeto.schema'
+import { Registro } from '@/services/escopo-api/registro'
 
-export default function Register({ formatRegistros, expandRegsister, setExpandRegister }: any) {
+interface RegistrosProps {
+  formatRegistros: GroupedData<Registro>
+  expandRegister: Record<string, boolean>
+  setExpandRegister: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+}
+
+export default function Registros({
+  formatRegistros,
+  expandRegister,
+  setExpandRegister,
+}: RegistrosProps) {
   return (
     <View className="gap-6">
-      {Object.entries(formatRegistros).map(([ano, meses]: [string, any]) => (
+      {Object.entries(formatRegistros).map(([ano, meses]) => (
         <View key={ano}>
           <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
-          {Object.entries(meses).map(([mes, registros]: [string, any]) => (
+          {Object.entries(meses).map(([mes, registros]) => (
             <View key={mes} className="mb-4">
               <TouchableOpacity
-                onPress={() => setExpandRegister((prev: any) => ({ ...prev, [mes]: !prev[mes] }))}
+                onPress={() => setExpandRegister((prev) => ({ ...prev, [mes]: !prev[mes] }))}
                 className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
               >
                 <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
-                {expandRegsister[mes] === false ? (
+                {expandRegister[mes] === false ? (
                   <ChevronRight size={20} color="#7E22CE" />
                 ) : (
                   <ChevronDown size={20} color="#7E22CE" />
                 )}
               </TouchableOpacity>
 
-              {expandRegsister[mes] !== false &&
-                registros.map((reg: any) => (
+              {expandRegister[mes] !== false &&
+                registros.map((reg) => (
                   <View
                     key={reg.id}
                     className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
@@ -38,7 +50,7 @@ export default function Register({ formatRegistros, expandRegsister, setExpandRe
                         {reg.titulo}
                       </Text>
                       <Text className="text-xs text-cinza-400">
-                        {new Date(reg.criado_em).toLocaleDateString()}
+                        {new Date(reg.criado_em).toLocaleDateString('pt-BR')}
                       </Text>
                     </View>
                     <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
