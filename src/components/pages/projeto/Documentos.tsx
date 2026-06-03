@@ -10,9 +10,10 @@ interface DocumentosProps {
   documentos: CategoriasComDocumentos | null
   deletarCategoria: (categoriaId: number) => void
   projeto: projetoService.DetalhesDoProjeto | null
+  onCriarDocumento: (categoriaId: number) => Promise<void>
 }
 
-export default function Documentos({ documentos, deletarCategoria, projeto }: DocumentosProps) {
+export default function Documentos({ documentos, deletarCategoria, projeto, onCriarDocumento }: DocumentosProps) {
   return (
     <View className="w-full gap-6">
       {documentos?.projeto?.categorias?.map((doc) => (
@@ -50,10 +51,12 @@ export default function Documentos({ documentos, deletarCategoria, projeto }: Do
             ))}
 
             {(projeto?.nivel_acesso_id === 1 || projeto?.nivel_acesso_id === 2) && (
-              <TouchableOpacity className="mt-4 flex-row items-center justify-center gap-2 rounded-xl border border-dashed border-purple-300 py-3">
+              <TouchableOpacity
+                onPress={() => onCriarDocumento(doc.id)}
+                className="mt-4 flex-row items-center justify-center gap-2 rounded-xl border border-dashed border-purple-300 py-3"
+              >
                 <FilePlus size={18} color="#7E22CE" />
                 <Text className="font-inter-bold text-purple-700">Novo Documento</Text>
-                {/* TODO: Implementar criação de um documento já com redirecionamento para a tela de edição dele */}
               </TouchableOpacity>
             )}
           </View>

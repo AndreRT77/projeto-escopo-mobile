@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useLocalSearchParams } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronDown, ChevronUp, FolderPlus, PenLine, Plus } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -30,6 +30,7 @@ import * as reuniaoService from '@/services/escopo-api/reuniao'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function ProjectDetails() {
+  const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { showAlert } = useAlert()
 
@@ -72,8 +73,6 @@ export default function ProjectDetails() {
 
   useEffect(() => {
     async function carregarDadosIniciais() {
-      if (!id) return
-
       try {
         const [dataProjeto, dataDoc, dataReg, dataMeeting] = await Promise.all([
           projetoService.obterDetalhesDoProjetoPorId(id),
@@ -97,8 +96,6 @@ export default function ProjectDetails() {
   }, [id])
 
   async function onSubmitCategoria(data: CategoriaData) {
-    if (!id) return
-
     try {
       await categoriaService.criarCategoria(id, { titulo: data.titulo })
       const dataDoc = await documentoService.obterCategoriasComDocumentoDeUmProjeto(id)
@@ -111,8 +108,6 @@ export default function ProjectDetails() {
   }
 
   async function onSubmitReuniao(data: ReuniaoData) {
-    if (!id) return
-
     try {
       await reuniaoService.criarReuniaoEmUmProjeto(id, { titulo: data.titulo })
       const dataMeeting = await reuniaoService.obterReunioesDeUmProjeto(id)
@@ -125,12 +120,35 @@ export default function ProjectDetails() {
   }
 
   async function handleDeletarCategoria(categoriaId: string | number) {
-    if (!id) return
-
     try {
       await categoriaService.excluirCategoria(categoriaId)
       const dataDoc = await documentoService.obterCategoriasComDocumentoDeUmProjeto(id)
       setDocumentos(dataDoc)
+    } catch (error) {
+      showAlert(extractApiErrorMessage(error), 'error')
+    }
+  }
+
+  async function handleCriarRegistro() {
+    try {
+      const novoRegistro = await registroService.criarRegistroEmUmProjeto(id, {
+        titulo: 'Novo Registro',
+        conteudo: '',
+      })
+
+      router.push(`/registro/${novoRegistro.id}`)
+    } catch (error) {
+      showAlert(extractApiErrorMessage(error), 'error')
+    }
+  }
+
+  async function handleCriarDocumento(categoriaId: number) {
+    try {
+      const novoDocumento = await documentoService.criarDocumentoEmUmaCategoria(categoriaId, {
+        titulo: 'Novo Documento',
+      })
+
+      router.push(`/documento/${novoDocumento.id}`)
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
     }
@@ -189,10 +207,9 @@ export default function ProjectDetails() {
         {/* Detalhes do projeto */}
         <View className="w-full p-2">
           <View className="flex-row items-center gap-2">
-            {/* TODO: Implementar redirecionamento para tela de editar projeto */}
             <Text className="font-inter-bold text-2xl text-cinza-700">{project?.titulo}</Text>
             {project?.nivel_acesso_id === 1 && (
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push(`/projeto/${id}/editar`)}>
                 <PenLine size={20} color="#7E22CE" />
               </TouchableOpacity>
             )}
@@ -286,6 +303,7 @@ export default function ProjectDetails() {
               documentos={documentos}
               deletarCategoria={handleDeletarCategoria}
               projeto={project}
+              onCriarDocumento={handleCriarDocumento}
             />
           </View>
         )}
@@ -293,10 +311,12 @@ export default function ProjectDetails() {
         {currentTab === 'Registros' && (
           <View className="mt-6 pb-10">
             {hasAcessoPrivilegiado && (
-              <Button className="mb-4 w-full flex-row items-center gap-2">
+              <Button
+                onPress={handleCriarRegistro}
+                className="mb-4 w-full flex-row items-center gap-2"
+              >
                 <Plus size={20} color="#FFFFFF" />
                 <Text className="font-inter-bold text-white">Novo Registro</Text>
-                {/* TODO: Implementar criação de registro já com redirecionamento para a tela de edição dele */}
               </Button>
             )}
 

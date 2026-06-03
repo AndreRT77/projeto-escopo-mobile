@@ -164,7 +164,6 @@ export default function ProjectForm({
   async function inserirProprietario() {
     try {
       const usuario = await usuarioService.getUserByEmail(userEmail)
-      console.log(usuario)
 
       const novoIntegrante: Integrante = {
         id: usuario.id,
