@@ -3,6 +3,7 @@ import { ChevronRight, Plus } from 'lucide-react-native'
 import { useEffect, useState } from 'react'
 import { Image, Pressable, ScrollView, View } from 'react-native'
 
+import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { useAlert } from '@/hooks/useAlert'
 import type { Project } from '@/services/escopo-api/projeto'
@@ -12,6 +13,7 @@ import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 export default function Projetos() {
   const [projetos, setProjetos] = useState<Project[]>([])
   const { showAlert } = useAlert()
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadProjects() {
@@ -21,11 +23,17 @@ export default function Projetos() {
         setProjetos(data)
       } catch (err) {
         showAlert(extractApiErrorMessage(err), 'error')
+      } finally {
+        setLoading(false)
       }
     }
 
     loadProjects()
   }, [])
+
+  if (loading) {
+    return <Loading />
+  }
 
   return (
     <View className="flex-1">

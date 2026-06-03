@@ -12,6 +12,7 @@ import { FormModal } from '@/components/pages/projeto/FormModal'
 import Registros from '@/components/pages/projeto/Registros'
 import Reunioes from '@/components/pages/projeto/Reunioes'
 import { Button } from '@/components/ui/Button'
+import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { useAlert } from '@/hooks/useAlert'
 import {
@@ -46,6 +47,7 @@ export default function ProjectDetails() {
   const [expand, setExpand] = useState(false)
   const [expandRegister, setExpandRegister] = useState<Record<string, boolean>>({})
   const [expandReuniao, setExpandReuniao] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(true)
 
   const [openModalCategoria, setOpenModalCategoria] = useState(false)
   const [openModalReuniao, setOpenModalReuniao] = useState(false)
@@ -86,6 +88,8 @@ export default function ProjectDetails() {
         setReunioes(dataMeeting)
       } catch (error) {
         showAlert(extractApiErrorMessage(error), 'error')
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -174,6 +178,10 @@ export default function ProjectDetails() {
     }, {})
 
   const hasAcessoPrivilegiado = project?.nivel_acesso_id === 1 || project?.nivel_acesso_id === 2
+
+  if (loading) {
+    return <Loading />
+  }
 
   return (
     <SafeAreaView className="flex-1">

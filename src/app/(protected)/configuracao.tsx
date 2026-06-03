@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { Button } from '@/components/ui/Button'
+import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { useAlert } from '@/hooks/useAlert'
@@ -223,11 +224,7 @@ export default function Configuracao() {
   }
 
   if (loadingUserData) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-cinza-100">
-        <Text className="text-cinza-500">Carregando dados...</Text>
-      </SafeAreaView>
-    )
+    return <Loading />
   }
 
   return (

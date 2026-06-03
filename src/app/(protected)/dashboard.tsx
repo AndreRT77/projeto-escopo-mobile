@@ -1,10 +1,11 @@
 import { Link } from 'expo-router'
 import { Check, ChevronRight, Folder, FolderOpen, X } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 'react-native'
+import { Image, ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import iconMailOpen from '@/assets/images/icons/icon-mail-open.png'
+import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { useAlert } from '@/hooks/useAlert'
 import * as conviteService from '@/services/escopo-api/convite'
@@ -115,11 +116,7 @@ export default function Dashboard() {
   }
 
   if (loading) {
-    return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" color="#7E22CE" />
-      </SafeAreaView>
-    )
+    return <Loading />
   }
 
   return (
