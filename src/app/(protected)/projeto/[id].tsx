@@ -189,11 +189,11 @@ export default function ProjectDetails() {
         {/* Detalhes do projeto */}
         <View className="w-full p-2">
           <View className="flex-row items-center gap-2">
+            {/* TODO: Implementar redirecionamento para tela de editar projeto */}
             <Text className="font-inter-bold text-2xl text-cinza-700">{project?.titulo}</Text>
             {project?.nivel_acesso_id === 1 && (
               <TouchableOpacity>
-                <PenLine size={20} color="#7E22CE" />{' '}
-                {/* TODO: Implementar redirecionamento para tela de editar projeto */}
+                <PenLine size={20} color="#7E22CE" />
               </TouchableOpacity>
             )}
           </View>
@@ -202,7 +202,7 @@ export default function ProjectDetails() {
             <Text className="text-base text-cinza-600">
               Status:{' '}
               <Text className="font-inter-bold">
-                {project?.status ? 'Concluído' : 'Em andamento'}
+                {project?.status ? 'Em andamento' : 'Concluído'}
               </Text>
             </Text>
 
