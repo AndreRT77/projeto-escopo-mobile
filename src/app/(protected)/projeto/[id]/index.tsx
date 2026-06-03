@@ -228,7 +228,7 @@ export default function ProjectDetails() {
                 numberOfLines={expand ? undefined : 2}
                 className="flex-1 text-base text-cinza-600"
               >
-                Descrição: {project?.descricao}
+                Descrição: {project?.descricao || 'O projeto não possui descrição.'}
               </Text>
 
               {expand ? (

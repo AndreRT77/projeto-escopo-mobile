@@ -32,56 +32,67 @@ export default function Registros({
   expandRegister,
   setExpandRegister,
 }: RegistrosProps) {
+  // Verifica se o objeto formatRegistros existe e tem pelo menos um ano (chave)
+  const hasRegistros = formatRegistros && Object.keys(formatRegistros).length > 0
+
   return (
     <View className="gap-6">
-      {Object.entries(formatRegistros)
-        .sort(([anoA], [anoB]) => Number(anoB) - Number(anoA)) // Anos mais recentes primeiro
-        .map(([ano, meses]) => (
-          <View key={ano}>
-            <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
+      {!hasRegistros ? (
+        <View className="bg-cinza-50 w-full items-center justify-center rounded-2xl border border-dashed border-cinza-300 py-8">
+          <Text className="text-center font-inter-medium text-cinza-500">
+            Não há registros neste projeto.
+          </Text>
+        </View>
+      ) : (
+        Object.entries(formatRegistros)
+          .sort(([anoA], [anoB]) => Number(anoB) - Number(anoA)) // Anos mais recentes primeiro
+          .map(([ano, meses]) => (
+            <View key={ano}>
+              <Text className="mb-4 text-center font-inter-bold text-xl text-cinza-700">{ano}</Text>
 
-            {Object.entries(meses)
-              .sort(([mesA], [mesB]) => ORDEM_MESES.indexOf(mesB) - ORDEM_MESES.indexOf(mesA)) // Meses mais recentes primeiro
-              .map(([mes, registros]) => (
-                <View key={mes} className="mb-4">
-                  <TouchableOpacity
-                    onPress={() => setExpandRegister((prev) => ({ ...prev, [mes]: !prev[mes] }))}
-                    className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
-                  >
-                    <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
-                    {expandRegister[mes] === false ? (
-                      <ChevronRight size={20} color="#7E22CE" />
-                    ) : (
-                      <ChevronDown size={20} color="#7E22CE" />
-                    )}
-                  </TouchableOpacity>
+              {Object.entries(meses)
+                .sort(([mesA], [mesB]) => ORDEM_MESES.indexOf(mesB) - ORDEM_MESES.indexOf(mesA)) // Meses mais recentes primeiro
+                .map(([mes, registros]) => (
+                  <View key={mes} className="mb-4">
+                    <TouchableOpacity
+                      onPress={() => setExpandRegister((prev) => ({ ...prev, [mes]: !prev[mes] }))}
+                      className="mb-3 flex-row items-center border-b border-cinza-300 pb-2"
+                    >
+                      <Text className="flex-1 font-inter-bold text-lg text-purple-700">{mes}</Text>
+                      {expandRegister[mes] === false ? (
+                        <ChevronRight size={20} color="#7E22CE" />
+                      ) : (
+                        <ChevronDown size={20} color="#7E22CE" />
+                      )}
+                    </TouchableOpacity>
 
-                  {expandRegister[mes] !== false &&
-                    registros.map((reg) => (
-                      <View
-                        key={reg.id}
-                        className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
-                      >
-                        <View className="flex-row items-start justify-between">
-                          <Text
-                            className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
-                            numberOfLines={1}
-                          >
-                            {reg.titulo}
-                          </Text>
-                          <Text className="text-xs text-cinza-400">
-                            {new Date(reg.criado_em).toLocaleDateString('pt-BR')}
+                    {expandRegister[mes] !== false &&
+                      registros.map((reg) => (
+                        <View
+                          key={reg.id}
+                          className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
+                        >
+                          <View className="flex-row items-start justify-between">
+                            <Text
+                              className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
+                              numberOfLines={1}
+                            >
+                              {reg.titulo}
+                            </Text>
+                            <Text className="text-xs text-cinza-400">
+                              {new Date(reg.criado_em).toLocaleDateString('pt-BR')}
+                            </Text>
+                          </View>
+                          <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
+                            {reg.conteudo}
                           </Text>
                         </View>
-                        <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
-                          {reg.conteudo}
-                        </Text>
-                      </View>
-                    ))}
-                </View>
-              ))}
-          </View>
-        ))}
+                      ))}
+                  </View>
+                ))}
+            </View>
+          ))
+      )}
     </View>
   )
 }

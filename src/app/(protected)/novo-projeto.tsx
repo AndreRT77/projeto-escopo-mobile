@@ -9,6 +9,7 @@ import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { useAlert } from '@/hooks/useAlert'
 import { useAuth } from '@/hooks/useAuth'
+import { criarProjetoData } from '@/schemas/form-projeto.schema'
 import * as projetoService from '@/services/escopo-api/projeto'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -19,6 +20,10 @@ export default function NewProject() {
   const { logout } = useAuth()
   const [userEmail, setUserEmail] = useState('')
   const [loading, setLoading] = useState(true)
+
+  function stopLoading() {
+    setLoading(false)
+  }
 
   useEffect(() => {
     async function obterEmail() {
@@ -38,25 +43,16 @@ export default function NewProject() {
       } catch (error) {
         logout()
       } finally {
-        setLoading(false)
+        stopLoading()
       }
     }
 
     obterEmail()
   }, [])
 
-  async function handleCriarProjeto(formData: any) {
-    const payload = {
-      titulo: formData.titulo,
-      descricao: formData.descricao,
-      integrantes: formData.integrantes.map((integrante: any) => ({
-        id: integrante.id,
-        nivel_acesso_id: integrante.nivel_acesso_id,
-      })),
-    }
-
+  async function handleCriarProjeto(formData: criarProjetoData) {
     try {
-      const response = await projetoService.criarProjeto(payload)
+      const response = await projetoService.criarProjeto(formData)
       showAlert('Projeto criado com sucesso!', 'success')
       router.push(`/projeto/${response.id}`)
     } catch (error) {
@@ -69,7 +65,7 @@ export default function NewProject() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1">
       <ScrollView className="flex-1 px-5">
         <Text className="mb-6 font-inter-bold text-2xl text-cinza-700">Novo Projeto</Text>
 
@@ -79,6 +75,7 @@ export default function NewProject() {
           onSubmit={handleCriarProjeto}
           userEmail={userEmail}
           onError={(msg) => showAlert(msg, 'error')}
+          stopLoading={stopLoading}
         />
       </ScrollView>
     </SafeAreaView>
