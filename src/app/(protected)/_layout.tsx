@@ -12,7 +12,7 @@ export default function ProtectedLayout() {
   const currentPath = usePathname()
 
   const itensMenu = [
-    { id: 1, nome: 'Dashboard', path: '/dashboard' },
+    { id: 1, nome: 'Dashboard', path: '/' },
     { id: 2, nome: 'Novo Projeto', path: '/novo-projeto' },
     { id: 3, nome: 'Lista de projetos', path: '/projetos' },
     { id: 4, nome: 'Notificações', path: '/notificacoes' },

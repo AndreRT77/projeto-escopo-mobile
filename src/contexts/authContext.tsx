@@ -28,7 +28,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   function login() {
     setIsLoggedIn(true)
     storageState({ isLoggedIn: true })
-    router.replace('/dashboard')
+    router.replace('/')
   }
 
   async function logout() {
