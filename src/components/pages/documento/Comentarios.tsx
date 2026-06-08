@@ -92,10 +92,17 @@ function textoDoValor(valor: any) {
   }
 
   if (typeof valor === 'object') {
-    return pegar(valor, ['nome', 'titulo', 'descricao', 'label'], '')
+    return pegar(valor, ['nome', 'name', 'titulo', 'descricao', 'label'], '')
   }
 
   return String(valor)
+}
+
+function textoNormalizado(valor: any) {
+  return textoDoValor(valor)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
 }
 
 function temValor(valor: any) {
@@ -251,63 +258,186 @@ function autorComentario(comentario: any) {
   }
 }
 
-function tipoComentario(comentario: any) {
-  const comentarioTipo = pegarObjeto(comentario, ['comentario_tipo', 'tipo', 'comentarioTipo'])
+function idTipoComentario(comentario: any, comentarioTipo: any) {
   const tipoBruto = pegar(
     comentario,
-    ['comentario_tipo_id', 'tipo_comentario_id', 'tipoId', 'tipo_id'],
-    pegar(comentarioTipo, ['id', 'comentario_tipo_id', 'tipo_id'], null),
+    [
+      'comentario_tipo_id',
+      'tipo_comentario_id',
+      'tipoId',
+      'tipo_id',
+      'comentarioTipoId',
+      'comentario_tipo',
+    ],
+    null,
   )
-  const comentarioTipoBruto = pegar(comentario, ['comentario_tipo', 'tipo', 'comentarioTipo'], null)
-  const nomeTipo = textoDoValor(
-    pegar(comentarioTipo, ['nome', 'titulo', 'descricao'], comentarioTipoBruto),
-  ).toLowerCase()
-  const tipoNumerico = Number(tipoBruto || comentarioTipoBruto)
-  const registroReferenciaId = registroReferenciaIdComentario(comentario)
-  const parentId = parentIdComentario(comentario)
+  const tipoObjeto = comentarioTipo || pegarObjeto(comentario, ['comentario_tipo', 'tipo'])
+  const idObjeto = pegar(
+    tipoObjeto,
+    ['id', 'comentario_tipo_id', 'tipo_comentario_id', 'tipo_id'],
+    null,
+  )
+  const candidatos = [tipoBruto, idObjeto]
 
-  if (nomeTipo.includes('sugest')) return 3
-  if (nomeTipo.includes('respost')) return 2
-  if (tipoNumerico === 3) return 3
-  if (tipoNumerico === 2) return 2
-  if (registroReferenciaId) return 3
-  if (parentId) return 2
-  if (Number.isFinite(tipoNumerico) && tipoNumerico > 0) return tipoNumerico
+  for (const candidato of candidatos) {
+    if (typeof candidato === 'number' && Number.isFinite(candidato)) {
+      return candidato
+    }
+
+    if (typeof candidato === 'string') {
+      const numero = Number(candidato)
+
+      if (Number.isFinite(numero) && numero > 0) {
+        return numero
+      }
+
+      const json = pegarObjeto({ valor: candidato }, ['valor'])
+      const numeroJson = Number(
+        pegar(json, ['id', 'comentario_tipo_id', 'tipo_comentario_id', 'tipo_id'], null),
+      )
+
+      if (Number.isFinite(numeroJson) && numeroJson > 0) {
+        return numeroJson
+      }
+    }
+  }
+
+  return null
+}
+
+function tipoComentario(comentario: any) {
+  const comentarioTipo = pegarObjeto(comentario, ['comentario_tipo', 'tipo', 'comentarioTipo'])
+  const comentarioTipoBruto = pegar(comentario, ['comentario_tipo', 'tipo', 'comentarioTipo'], null)
+  const nomeTipo = textoNormalizado(
+    pegar(
+      comentario,
+      [
+        'comentario_tipo_nome',
+        'tipo_comentario_nome',
+        'tipo_nome',
+        'nome_tipo',
+        'comentarioTipoNome',
+      ],
+      pegar(
+        comentarioTipo,
+        ['nome', 'name', 'tipo', 'titulo', 'descricao', 'label'],
+        comentarioTipoBruto,
+      ),
+    ),
+  )
+  const tipoNumerico = idTipoComentario(comentario, comentarioTipo)
+  const tipoOrigem = Number(pegar(comentario, ['_comentario_tipo_origem'], null))
+  const temTipoComentario = nomeTipo.includes('comentario') || tipoNumerico === 1
+  const temTipoResposta = nomeTipo.includes('respost') || tipoNumerico === 2 || tipoOrigem === 2
+  const temTipoSugestao = nomeTipo.includes('sugest') || tipoNumerico === 3 || tipoOrigem === 3
+  const temReferencia = temRegistroReferenciaComentario(comentario)
+  const temReferenciaGenerica = Boolean(registroReferenciaGenericaIdComentario(comentario))
+
+  if (temTipoResposta || temRespostaComentario(comentario)) return 2
+  if (temTipoSugestao || temReferencia || (!temTipoComentario && temReferenciaGenerica)) return 3
+  if (temTipoComentario) return 1
+  if (typeof tipoNumerico === 'number' && Number.isFinite(tipoNumerico) && tipoNumerico > 0) {
+    return tipoNumerico
+  }
 
   return 1
 }
 
+function temObjetoComentario(comentario: any, campos: string[]) {
+  return Boolean(pegarObjeto(comentario, campos))
+}
+
+function temRespostaComentario(comentario: any) {
+  return Boolean(
+    parentIdComentario(comentario) ||
+    temObjetoComentario(comentario, [
+      'parent',
+      'comentario_pai',
+      'comentarioPai',
+      'comentario_parent',
+      'comentarioParent',
+      'resposta',
+      'resposta_para',
+      'respostaPara',
+      'comentario_respondido',
+      'comentarioRespondido',
+    ]) ||
+    pegar(
+      comentario,
+      [
+        'parent_texto',
+        'parent_conteudo',
+        'comentario_pai_texto',
+        'comentario_pai_conteudo',
+        'resposta_texto',
+        'resposta_conteudo',
+        'texto_resposta',
+        'conteudo_resposta',
+        'mensagem_respondida',
+      ],
+      null,
+    ),
+  )
+}
+
+function temRegistroReferenciaComentario(comentario: any) {
+  return Boolean(
+    registroReferenciaIdComentario(comentario) ||
+    temObjetoComentario(comentario, [
+      'registro_referencia',
+      'registroReferencia',
+      'requisito_referencia',
+    ]) ||
+    pegar(
+      comentario,
+      [
+        'registro_titulo',
+        'registroTitulo',
+        'titulo_registro',
+        'registro_nome',
+        'registroReferenciaTitulo',
+        'registro_referencia_titulo',
+        'nome_registro',
+        'requisito_titulo',
+        'requisito_nome',
+      ],
+      null,
+    ),
+  )
+}
+
 function registroReferenciaIdComentario(comentario: any) {
-  const registro = pegarObjeto(comentario, [
-    'registro',
+  const registroReferenciaObjeto = pegarObjeto(comentario, [
     'registro_referencia',
     'registroReferencia',
-    'requisito',
     'requisito_referencia',
   ])
-  const registroReferencia = pegar(comentario, ['registro_referencia', 'registroReferencia'], null)
-  const idDireto = pegar(
+  const registroReferenciaValor = pegar(
     comentario,
-    [
-      'registro_referencia_id',
-      'registroReferenciaId',
-      'registro_id',
-      'registroId',
-      'requisito_id',
-      'requisitoId',
-    ],
+    ['registro_referencia', 'registroReferencia'],
     null,
   )
+  const idDireto = pegar(comentario, ['registro_referencia_id', 'registroReferenciaId'], null)
 
   if (temValor(idDireto)) return idDireto
 
-  if (registro) {
-    return pegar(registro, ['id', 'registro_id', 'registroId', 'requisito_id', 'requisitoId'], null)
+  if (registroReferenciaObjeto) {
+    return pegar(
+      registroReferenciaObjeto,
+      ['id', 'registro_id', 'registroId', 'requisito_id', 'requisitoId'],
+      null,
+    )
   }
 
-  return typeof registroReferencia === 'number' || typeof registroReferencia === 'string'
-    ? registroReferencia
+  return typeof registroReferenciaValor === 'number' || typeof registroReferenciaValor === 'string'
+    ? registroReferenciaValor
     : null
+}
+
+function registroReferenciaGenericaIdComentario(comentario: any) {
+  const registro = pegarObjeto(comentario, ['registro', 'requisito'])
+
+  return pegar(registro, ['id', 'registro_id', 'registroId', 'requisito_id', 'requisitoId'], null)
 }
 
 function referenciaComentario(comentario: any): ReferenciaComentario | null {
@@ -374,6 +504,40 @@ function referenciaRespostaDireta(comentario: any): ReferenciaComentario | null 
   }
 }
 
+function tituloRegistroComentario(comentario: any, registro: any) {
+  return textoDoValor(
+    pegar(
+      registro,
+      [
+        'registro_titulo',
+        'titulo',
+        'nome',
+        'name',
+        'label',
+        'titulo_registro',
+        'registro_nome',
+        'requisito_titulo',
+        'requisito_nome',
+      ],
+      pegar(
+        comentario,
+        [
+          'registro_titulo',
+          'registroTitulo',
+          'titulo_registro',
+          'registro_nome',
+          'registroReferenciaTitulo',
+          'registro_referencia_titulo',
+          'nome_registro',
+          'requisito_titulo',
+          'requisito_nome',
+        ],
+        '',
+      ),
+    ),
+  )
+}
+
 function adaptarComentario(
   comentario: Comentario,
   comentariosPorId: Map<string, Comentario>,
@@ -401,7 +565,9 @@ function adaptarComentario(
   const criadoEm = pegar(comentario, ['criado_em', 'created_at', 'data_criacao'])
   const { data, horario } = formatarDataHora(criadoEm)
   const tipoId = tipoComentario(comentario)
-  const registroReferenciaId = registroReferenciaIdComentario(comentario)
+  const registroReferenciaId =
+    registroReferenciaIdComentario(comentario) ||
+    (tipoId === 3 ? registroReferenciaGenericaIdComentario(comentario) : null)
   const registro = pegarObjeto(comentario, [
     'registro',
     'registro_referencia',
@@ -415,17 +581,7 @@ function adaptarComentario(
     cargosPorAutorId.get(String(autorId)) ||
     (String(autorId) === String(usuarioAtual?.id) ? usuarioAtual?.cargo : '') ||
     (tipoId === 3 ? 'Registro' : '')
-  const tituloRegistro = textoDoValor(
-    pegar(
-      registro,
-      ['registro_titulo', 'titulo', 'nome'],
-      pegar(
-        comentario,
-        ['registro_titulo', 'registroTitulo', 'titulo_registro', 'registro_nome'],
-        '',
-      ),
-    ),
-  )
+  const tituloRegistro = tituloRegistroComentario(comentario, registro)
   const registroLinkId = pegar(registro, ['id', 'registro_id', 'registroId'], registroReferenciaId)
 
   return {
@@ -562,11 +718,11 @@ async function prepararComentariosComRegistros(
 
 function Avatar({ comentario }: { comentario: Pick<ComentarioPreparado, 'foto' | 'avatar'> }) {
   return (
-    <View className="h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-base bg-cinza-200">
+    <View className="h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-base bg-cinza-200">
       {comentario.foto ? (
         <Image source={{ uri: comentario.foto }} className="h-full w-full" />
       ) : (
-        <Text className="font-inter-semibold text-base text-base">{comentario.avatar}</Text>
+        <Text className="font-inter-semibold text-base text-lg">{comentario.avatar}</Text>
       )}
     </View>
   )
@@ -574,20 +730,20 @@ function Avatar({ comentario }: { comentario: Pick<ComentarioPreparado, 'foto' |
 
 function Referencia({ referencia }: { referencia: ReferenciaComentario }) {
   return (
-    <View className="mb-2 rounded-md bg-cinza-200 px-3 py-2">
-      <View className="flex-row flex-wrap items-baseline gap-x-2">
-        <Text className="text-sm" style={{ color: PURPLE }}>
+    <View className="mb-3 rounded-lg bg-cinza-200 px-4 py-3">
+      <View className="flex-row flex-wrap items-baseline gap-x-2 gap-y-1">
+        <Text className="font-inter-medium text-base leading-5" style={{ color: PURPLE }}>
           {referencia.autor}
         </Text>
         {!!referencia.cargo && (
-          <Text className="text-sm text-cinza-400" numberOfLines={1}>
+          <Text className="min-w-0 flex-1 text-base leading-5 text-cinza-400" numberOfLines={1}>
             {referencia.cargo}
           </Text>
         )}
       </View>
 
       {!!referencia.texto && (
-        <Text className="mt-1 text-sm leading-5 text-cinza-700" numberOfLines={3}>
+        <Text className="mt-2 text-base leading-6 text-cinza-700" numberOfLines={3}>
           {referencia.texto}
         </Text>
       )}
@@ -605,41 +761,44 @@ function ComentarioCard({
   const referencia = comentario.resposta || comentario.referencia
 
   return (
-    <View className="mb-5 flex-row items-start gap-3">
+    <View className="mb-10 flex-row items-start gap-4">
       <Avatar comentario={comentario} />
 
       <View className="min-w-0 flex-1">
-        <View className="mb-1 flex-row flex-wrap items-baseline justify-between gap-x-2">
-          <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-1">
-            <Text className="font-inter-semibold text-base" style={{ color: PURPLE }}>
+        <View className="mb-2 flex-row items-baseline justify-between gap-x-2">
+          <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-2">
+            <Text className="font-inter-bold text-lg leading-6" style={{ color: PURPLE }}>
               {comentario.nome}
             </Text>
             {!!comentario.cargo && (
-              <Text className="text-sm text-cinza-400" numberOfLines={1}>
+              <Text
+                className="min-w-0 flex-1 font-inter-semibold text-base leading-6 text-cinza-400"
+                numberOfLines={1}
+              >
                 {comentario.cargo}
               </Text>
             )}
           </View>
 
           {!!(comentario.horario || comentario.data) && (
-            <Text className="text-xs text-cinza-400">
+            <Text className="shrink-0 text-base text-cinza-400" numberOfLines={1}>
               {comentario.horario} · {comentario.data}
             </Text>
           )}
         </View>
 
-        <View className="rounded-[18px] border border-cinza-500 px-3 py-2">
+        <View className="rounded-[18px] border border-cinza-500 px-4 py-4">
           {referencia && <Referencia referencia={referencia} />}
 
           <Text className="text-base leading-6 text-black">{comentario.texto}</Text>
         </View>
 
-        <View className="mt-2 flex-row justify-end">
+        <View className="mt-4 flex-row justify-end">
           <TouchableOpacity
             onPress={() => onResponder(comentario)}
-            className="rounded border border-cinza-500 px-3 py-1"
+            className="rounded-md border border-cinza-500 px-4 py-2"
           >
-            <Text className="text-sm text-cinza-700">Responder</Text>
+            <Text className="text-base text-cinza-700">Responder</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -741,7 +900,7 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
 
   return (
     <View className="flex-1 bg-white px-4 pt-3">
-      <View className="mb-3 flex-row items-center">
+      <View className="mb-4 flex-row items-center border-b border-cinza-200 pb-3">
         <TouchableOpacity onPress={onVoltar} className="h-10 w-10 items-center justify-center">
           <ChevronsLeft size={34} color="#374151" strokeWidth={2.5} />
         </TouchableOpacity>
