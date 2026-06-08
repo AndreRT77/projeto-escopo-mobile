@@ -7,6 +7,11 @@ export interface Comentario {
   criado_em: string
   parent_id: number | null
   registro_referencia: number | null
+  criador_id?: number
+  criador_nome?: string
+  nome_criador?: string
+  usuario_nome?: string
+  foto_perfil?: string | null
   comentario_tipo: {
     id: number
     nome: string

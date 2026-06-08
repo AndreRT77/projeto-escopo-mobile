@@ -136,7 +136,7 @@ export default function ProjectDetails() {
         conteudo: '',
       })
 
-      router.push(`/registro/${novoRegistro.id}`)
+      router.push(`/registro/${novoRegistro.id}` as any)
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
     }

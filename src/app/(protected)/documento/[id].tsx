@@ -1,13 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import {
-  ChevronsLeft,
-  GitBranch,
-  History,
-  MessagesSquare,
-  RotateCcw,
-  Save,
-  X,
-} from 'lucide-react-native'
+import { ChevronsLeft, History, MessagesSquare, Save } from 'lucide-react-native'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   KeyboardAvoidingView,
@@ -19,11 +11,11 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
-import Comentarios from '@/components/pages/projeto/Comentarios'
+import Comentarios from '@/components/pages/documento/Comentarios'
+import { Versionamento } from '@/components/pages/documento/Versionamento'
 import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { useAlert } from '@/hooks/useAlert'
-import * as comentarioService from '@/services/escopo-api/comentario'
 import * as documentoService from '@/services/escopo-api/documento'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
@@ -111,27 +103,16 @@ export default function Documento() {
 
   const [documento, setDocumento] = useState<documentoService.DetalhesDocumento | null>(null)
   const [versoes, setVersoes] = useState<documentoService.VersaoMin[]>([])
-  const [comentarios, setComentarios] = useState<comentarioService.Comentario[]>([])
 
   const [titulo, setTitulo] = useState('')
   const [conteudo, setConteudo] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [sendingComment, setSendingComment] = useState(false)
-  const [loadingVersionId, setLoadingVersionId] = useState<number | null>(null)
 
   const [editingTitle, setEditingTitle] = useState(false)
   const [editingContent, setEditingContent] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
-  const [versionPreviewOpen, setVersionPreviewOpen] = useState(false)
-  const [previewVersion, setPreviewVersion] = useState<documentoService.DetalhesVersao | null>(null)
-  const [previousPreviewVersion, setPreviousPreviewVersion] =
-    useState<documentoService.DetalhesVersao | null>(null)
-  const [previewVersionNumber, setPreviewVersionNumber] = useState<number | null>(null)
-  const [previousPreviewVersionNumber, setPreviousPreviewVersionNumber] = useState<number | null>(
-    null,
-  )
 
   useEffect(() => {
     async function loadDocumento() {
@@ -142,17 +123,15 @@ export default function Documento() {
       }
 
       try {
-        const [documentoData, versoesData, comentariosData] = await Promise.all([
+        const [documentoData, versoesData] = await Promise.all([
           documentoService.obterDetalhesDeUmDocumento(documentoId),
           documentoService.obterHistoricoDeVersoes(documentoId).catch(() => []),
-          comentarioService.obterComentariosDeUmDocumento(documentoId).catch(() => []),
         ])
 
         setDocumento(documentoData)
         setTitulo(documentoData.titulo)
         setConteudo(documentoData.conteudo || '')
         setVersoes(versoesData)
-        setComentarios(comentariosData)
       } catch (error) {
         showAlert(extractApiErrorMessage(error), 'error')
       } finally {
@@ -161,7 +140,7 @@ export default function Documento() {
     }
 
     loadDocumento()
-  }, [documentoId])
+  }, [documentoId, showAlert])
 
   async function refreshDocumento() {
     if (!documentoId) return
@@ -175,13 +154,6 @@ export default function Documento() {
     setTitulo(documentoData.titulo)
     setConteudo(documentoData.conteudo || '')
     setVersoes(versoesData)
-  }
-
-  async function refreshComentarios() {
-    if (!documentoId) return
-
-    const comentariosData = await comentarioService.obterComentariosDeUmDocumento(documentoId)
-    setComentarios(comentariosData)
   }
 
   async function handleSave() {
@@ -229,60 +201,24 @@ export default function Documento() {
     }
   }
 
-  async function handleCriarComentario(conteudoComentario: string) {
-    if (!documentoId) return
+  async function carregarVersoes() {
+    if (!documentoId) return []
 
     try {
-      setSendingComment(true)
-      await comentarioService.criarComentarioEmUmDocumento(documentoId, {
-        conteudo: conteudoComentario,
-        comentario_tipo_id: 1,
-        parent_id: null,
-        registro_referencia_id: null,
-      })
+      const versoesData = await documentoService.obterHistoricoDeVersoes(documentoId)
+      setVersoes(versoesData || [])
 
-      await refreshComentarios()
-      showAlert('Comentário enviado com sucesso!', 'success')
+      return versoesData || []
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
-      throw error
-    } finally {
-      setSendingComment(false)
+
+      return []
     }
   }
 
-  async function openVersionPreview(versao: documentoService.VersaoMin, index: number) {
-    try {
-      setLoadingVersionId(versao.id)
-
-      const previous = versoes[index + 1]
-      const [currentVersion, previousVersion] = await Promise.all([
-        documentoService.obterDetalhesDeUmaVersao(versao.id),
-        previous
-          ? documentoService.obterDetalhesDeUmaVersao(previous.id).catch(() => null)
-          : Promise.resolve(null),
-      ])
-
-      setPreviewVersion(currentVersion)
-      setPreviousPreviewVersion(previousVersion)
-      setPreviewVersionNumber(versoes.length - index)
-      setPreviousPreviewVersionNumber(previous ? versoes.length - (index + 1) : null)
-      setHistoryOpen(false)
-      setVersionPreviewOpen(true)
-    } catch (error) {
-      showAlert(extractApiErrorMessage(error), 'error')
-    } finally {
-      setLoadingVersionId(null)
-    }
-  }
-
-  function applyPreviewVersion() {
-    if (!previewVersion) return
-
-    setTitulo(previewVersion.titulo)
-    setConteudo(previewVersion.conteudo || '')
-    setVersionPreviewOpen(false)
-    setEditingContent(true)
+  async function abrirHistorico() {
+    await carregarVersoes()
+    setHistoryOpen(true)
   }
 
   if (loading) {
@@ -307,10 +243,9 @@ export default function Documento() {
     return (
       <SafeAreaView className="flex-1 bg-white">
         <Comentarios
-          comentarios={comentarios}
-          enviando={sendingComment}
-          onCriarComentario={handleCriarComentario}
+          documentoId={documentoId}
           onVoltar={() => setCommentsOpen(false)}
+          onErro={(mensagem) => showAlert(mensagem, 'error')}
         />
       </SafeAreaView>
     )
@@ -367,7 +302,7 @@ export default function Documento() {
 
               <View className="flex-row items-center gap-4">
                 <TouchableOpacity
-                  onPress={() => setHistoryOpen(true)}
+                  onPress={abrirHistorico}
                   className="h-11 w-11 items-center justify-center"
                 >
                   <History size={43} color={LIGHT_PURPLE} strokeWidth={2.1} />
@@ -396,7 +331,7 @@ export default function Documento() {
             ) : (
               <TouchableOpacity
                 activeOpacity={1}
-                onLongPress={() => setEditingContent(true)}
+                onPress={() => setEditingContent(true)}
                 className="flex-1"
               >
                 <ScrollView
@@ -425,127 +360,12 @@ export default function Documento() {
       </KeyboardAvoidingView>
 
       {historyOpen && (
-        <View className="absolute inset-0 z-20 bg-black/20 px-6 pt-24">
-          <View
-            className="rounded-2xl bg-white px-5 pb-4 pt-3"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              elevation: 8,
-            }}
-          >
-            <View className="mb-3 flex-row items-center justify-center">
-              <Text className="font-inter-semibold text-lg text-black">Histórico de Versões</Text>
-              <TouchableOpacity
-                onPress={() => setHistoryOpen(false)}
-                className="absolute right-0 h-8 w-8 items-center justify-center"
-              >
-                <X size={28} color="#1F2937" />
-              </TouchableOpacity>
-            </View>
-
-            <View className="gap-3">
-              {versoes.length === 0 ? (
-                <Text className="text-sm text-cinza-500">Nenhuma versão encontrada.</Text>
-              ) : (
-                versoes.map((versao, index) => {
-                  const versionNumber = versoes.length - index
-                  const isLoading = loadingVersionId === versao.id
-
-                  return (
-                    <TouchableOpacity
-                      key={versao.id}
-                      onPress={() => openVersionPreview(versao, index)}
-                      disabled={isLoading}
-                      className="flex-row items-center justify-between"
-                    >
-                      <Text
-                        className={`flex-1 text-base ${index === 0 ? '' : 'text-cinza-500'}`}
-                        style={{ color: index === 0 ? PURPLE : undefined }}
-                        numberOfLines={1}
-                      >
-                        {titulo} - V{versionNumber} - {formatDate(versao.criado_em)}
-                      </Text>
-                      {index === 0 ? (
-                        <X size={22} color="#1F2937" />
-                      ) : (
-                        <GitBranch size={22} color={PURPLE} />
-                      )}
-                    </TouchableOpacity>
-                  )
-                })
-              )}
-            </View>
-          </View>
-        </View>
-      )}
-
-      {versionPreviewOpen && previewVersion && (
-        <View className="absolute inset-0 z-30 bg-black/20 px-4 pt-14">
-          <View
-            className="max-h-[86%] rounded-xl bg-white px-5 pb-6 pt-4"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.25,
-              shadowRadius: 12,
-              elevation: 9,
-            }}
-          >
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text className="mb-4 text-center text-base" style={{ color: PURPLE }}>
-                {previewVersion.titulo} - v{previewVersionNumber ?? ''} -{' '}
-                {formatDate(previewVersion.criado_em)}
-              </Text>
-
-              <View className="max-h-60 rounded-xl border border-cinza-400 p-2">
-                <ScrollView nestedScrollEnabled>
-                  <DocumentContent conteudo={previewVersion.conteudo || ''} compact />
-                </ScrollView>
-              </View>
-
-              {previousPreviewVersion && (
-                <>
-                  <Text className="mb-4 mt-8 text-center text-base" style={{ color: PURPLE }}>
-                    {previousPreviewVersion.titulo} - v{previousPreviewVersionNumber ?? ''} -{' '}
-                    {formatDate(previousPreviewVersion.criado_em)}
-                  </Text>
-
-                  <View className="max-h-44 rounded-xl border border-cinza-400 p-2">
-                    <ScrollView nestedScrollEnabled>
-                      <DocumentContent
-                        conteudo={previousPreviewVersion.conteudo || ''}
-                        compact
-                        tone="negative"
-                      />
-                    </ScrollView>
-                  </View>
-                </>
-              )}
-            </ScrollView>
-
-            <View className="mt-5 flex-row justify-center gap-3">
-              <TouchableOpacity
-                onPress={() => setVersionPreviewOpen(false)}
-                className="flex-row items-center gap-2 rounded-lg border border-cinza-300 px-5 py-3"
-              >
-                <Text className="font-inter-medium text-base" style={{ color: PURPLE }}>
-                  Voltar
-                </Text>
-                <RotateCcw size={22} color={PURPLE} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={applyPreviewVersion}
-                className="rounded-lg bg-base px-5 py-3"
-              >
-                <Text className="font-inter-medium text-base text-white">Usar versão</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <Versionamento
+          versoes={versoes}
+          titulo={titulo}
+          onFechar={() => setHistoryOpen(false)}
+          onErro={(mensagem) => showAlert(mensagem, 'error')}
+        />
       )}
     </SafeAreaView>
   )
