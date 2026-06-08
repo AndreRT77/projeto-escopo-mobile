@@ -216,7 +216,7 @@ export default function ProjectForm({
     if (initialData) {
       reset({
         titulo: initialData.titulo,
-        descricao: initialData.descricao,
+        descricao: initialData.descricao ?? '',
         email: '',
       })
       initListaParticipantes(projectId)
