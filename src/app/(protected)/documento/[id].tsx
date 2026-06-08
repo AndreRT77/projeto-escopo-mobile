@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import MarkdownRenderer from '@/components/MarkdownRenderer'
 import Comentarios from '@/components/pages/documento/Comentarios'
 import { Versionamento } from '@/components/pages/documento/Versionamento'
 import { Loading } from '@/components/ui/Loading'
@@ -32,62 +33,6 @@ function formatDate(date?: string) {
   }
 
   return parsedDate.toLocaleDateString('pt-BR')
-}
-
-function contentBlocks(conteudo: string) {
-  const blocks = conteudo
-    .split(/\n+/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-
-  if (blocks.length > 0) {
-    return blocks
-  }
-
-  return ['Este documento ainda não possui conteúdo.']
-}
-
-function DocumentContent({
-  conteudo,
-  compact = false,
-  tone = 'default',
-}: {
-  conteudo: string
-  compact?: boolean
-  tone?: 'default' | 'positive' | 'negative'
-}) {
-  const colorClass =
-    tone === 'positive' ? 'text-verde' : tone === 'negative' ? 'text-alert' : 'text-black'
-  const titleClass = compact ? 'text-sm' : 'text-base'
-  const paragraphClass = compact ? 'text-xs leading-4' : 'text-base leading-6'
-
-  return (
-    <View>
-      {contentBlocks(conteudo).map((block, index) => {
-        const requirementMatch = block.match(/^(\d+\.\d+[:.)]?)\s*(.*)$/)
-
-        if (requirementMatch) {
-          return (
-            <View key={`${block}-${index}`} className={`${index === 0 ? '' : 'mt-4'} flex-row`}>
-              <Text className={`${paragraphClass} w-10 ${colorClass}`}>{requirementMatch[1]}</Text>
-              <Text className={`${paragraphClass} flex-1 ${colorClass}`}>
-                {requirementMatch[2]}
-              </Text>
-            </View>
-          )
-        }
-
-        return (
-          <Text
-            key={`${block}-${index}`}
-            className={`${index === 0 ? '' : compact ? 'mt-3' : 'mt-5'} ${titleClass} ${colorClass}`}
-          >
-            {block}
-          </Text>
-        )
-      })}
-    </View>
-  )
 }
 
 export default function Documento() {
@@ -338,7 +283,10 @@ export default function Documento() {
                   showsVerticalScrollIndicator={false}
                   contentContainerClassName={hasChanges ? 'pb-20' : ''}
                 >
-                  <DocumentContent conteudo={conteudo} />
+                  <MarkdownRenderer
+                    valor={conteudo}
+                    emptyMessage="Este documento ainda não possui conteúdo."
+                  />
                 </ScrollView>
               </TouchableOpacity>
             )}

@@ -6,16 +6,22 @@ export interface Comentario {
   conteudo: string
   criado_em: string
   parent_id: number | null
-  registro_referencia: number | null
+  registro_referencia: number | string | Record<string, unknown> | null
+  registro_referencia_id?: number | string | null
+  comentario_tipo_id?: number | string | null
   criador_id?: number
   criador_nome?: string
   nome_criador?: string
   usuario_nome?: string
   foto_perfil?: string | null
-  comentario_tipo: {
-    id: number
-    nome: string
-  }
+  comentario_tipo?:
+    | number
+    | string
+    | {
+        id?: number | string
+        nome?: string
+      }
+  [key: string]: unknown
 }
 
 export async function obterComentariosDeUmDocumento(
@@ -28,9 +34,9 @@ export async function obterComentariosDeUmDocumento(
 
 export interface CriarComentario {
   conteudo: string
-  parent_id?: number | null
-  registro_referencia_id?: number | null
-  comentario_tipo_id: number
+  parent_id?: number | string | null
+  registro_referencia_id?: number | string | null
+  comentario_tipo_id: number | string
 }
 
 export async function criarComentarioEmUmDocumento(

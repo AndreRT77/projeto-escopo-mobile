@@ -98,6 +98,10 @@ function textoDoValor(valor: any) {
   return String(valor)
 }
 
+function temValor(valor: any) {
+  return valor !== undefined && valor !== null && valor !== ''
+}
+
 function formatarDataHora(data?: string) {
   const dataObj = data ? new Date(data) : null
 
@@ -249,14 +253,61 @@ function autorComentario(comentario: any) {
 
 function tipoComentario(comentario: any) {
   const comentarioTipo = pegarObjeto(comentario, ['comentario_tipo', 'tipo', 'comentarioTipo'])
-
-  return Number(
-    pegar(
-      comentario,
-      ['comentario_tipo_id', 'tipo_comentario_id', 'tipoId', 'tipo_id'],
-      pegar(comentarioTipo, ['id', 'comentario_tipo_id', 'tipo_id'], 1),
-    ),
+  const tipoBruto = pegar(
+    comentario,
+    ['comentario_tipo_id', 'tipo_comentario_id', 'tipoId', 'tipo_id'],
+    pegar(comentarioTipo, ['id', 'comentario_tipo_id', 'tipo_id'], null),
   )
+  const comentarioTipoBruto = pegar(comentario, ['comentario_tipo', 'tipo', 'comentarioTipo'], null)
+  const nomeTipo = textoDoValor(
+    pegar(comentarioTipo, ['nome', 'titulo', 'descricao'], comentarioTipoBruto),
+  ).toLowerCase()
+  const tipoNumerico = Number(tipoBruto || comentarioTipoBruto)
+  const registroReferenciaId = registroReferenciaIdComentario(comentario)
+  const parentId = parentIdComentario(comentario)
+
+  if (nomeTipo.includes('sugest')) return 3
+  if (nomeTipo.includes('respost')) return 2
+  if (tipoNumerico === 3) return 3
+  if (tipoNumerico === 2) return 2
+  if (registroReferenciaId) return 3
+  if (parentId) return 2
+  if (Number.isFinite(tipoNumerico) && tipoNumerico > 0) return tipoNumerico
+
+  return 1
+}
+
+function registroReferenciaIdComentario(comentario: any) {
+  const registro = pegarObjeto(comentario, [
+    'registro',
+    'registro_referencia',
+    'registroReferencia',
+    'requisito',
+    'requisito_referencia',
+  ])
+  const registroReferencia = pegar(comentario, ['registro_referencia', 'registroReferencia'], null)
+  const idDireto = pegar(
+    comentario,
+    [
+      'registro_referencia_id',
+      'registroReferenciaId',
+      'registro_id',
+      'registroId',
+      'requisito_id',
+      'requisitoId',
+    ],
+    null,
+  )
+
+  if (temValor(idDireto)) return idDireto
+
+  if (registro) {
+    return pegar(registro, ['id', 'registro_id', 'registroId', 'requisito_id', 'requisitoId'], null)
+  }
+
+  return typeof registroReferencia === 'number' || typeof registroReferencia === 'string'
+    ? registroReferencia
+    : null
 }
 
 function referenciaComentario(comentario: any): ReferenciaComentario | null {
@@ -350,12 +401,14 @@ function adaptarComentario(
   const criadoEm = pegar(comentario, ['criado_em', 'created_at', 'data_criacao'])
   const { data, horario } = formatarDataHora(criadoEm)
   const tipoId = tipoComentario(comentario)
-  const registroReferenciaId = pegar(
-    comentario,
-    ['registro_referencia_id', 'registroReferenciaId', 'registro_referencia', 'registro_id'],
-    null,
-  )
-  const registro = pegarObjeto(comentario, ['registro'])
+  const registroReferenciaId = registroReferenciaIdComentario(comentario)
+  const registro = pegarObjeto(comentario, [
+    'registro',
+    'registro_referencia',
+    'registroReferencia',
+    'requisito',
+    'requisito_referencia',
+  ])
   const cargo =
     autor.cargo ||
     cargosPorComentarioId.get(String(id)) ||
@@ -669,7 +722,7 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
       setErro('')
       await comentarioService.criarComentarioEmUmDocumento(documentoId, {
         conteudo: texto.trim(),
-        parent_id: respostaPara?.id ? Number(respostaPara.id) : null,
+        parent_id: respostaPara?.id || null,
         registro_referencia_id: null,
         comentario_tipo_id: respostaPara ? 2 : 1,
       })
