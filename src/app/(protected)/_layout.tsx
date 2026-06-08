@@ -33,29 +33,28 @@ export default function ProtectedLayout() {
       return
     }
 
-    router.replace(path)
+    router.replace(path as any)
   }
 
   return (
     <View className="flex-1">
       <Stack
         screenOptions={{
-          title: '',
-          headerStyle: {
-            backgroundColor: '#552BA9',
-          },
-          headerLeft: () => <Image source={LogoImg} resizeMode="contain" className="h-12 w-44" />,
-          headerRight: () => (
-            <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)}>
-              {menuOpen ? <X color="white" /> : <Menu color="white" />}
-            </TouchableOpacity>
+          header: () => (
+            <View className="h-10 flex-row items-center justify-between bg-[#552BA9] px-4">
+              <Image source={LogoImg} resizeMode="contain" className="h-8 w-40" />
+
+              <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)}>
+                {menuOpen ? <X color="white" size={28} /> : <Menu color="white" size={28} />}
+              </TouchableOpacity>
+            </View>
           ),
           headerBackVisible: false,
         }}
       />
 
       {menuOpen && (
-        <View className="absolute bottom-0 left-0 right-0 top-20 z-50 flex flex-col items-center justify-center gap-2 bg-[#552BA9]">
+        <View className="absolute bottom-0 left-0 right-0 top-10 z-50 flex flex-col items-center justify-center gap-2 bg-[#552BA9]">
           {itensMenu.map((item) => (
             <TouchableOpacity
               key={item.id}
