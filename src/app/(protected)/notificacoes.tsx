@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router'
-// Importamos o ícone List junto com o ListCheck
 import { List, ListCheck } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
