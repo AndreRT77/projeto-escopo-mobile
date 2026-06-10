@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router'
-import { ListCheck } from 'lucide-react-native'
+// Importamos o ícone List junto com o ListCheck
+import { List, ListCheck } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -16,32 +17,42 @@ interface NotificacaoProps {
 }
 
 const NotificacaoItem = React.memo(({ notificacao, onOpen }: NotificacaoProps) => {
+  const descricao = notificacao?.descricao || ''
+
+  const isLida = Number(notificacao.aberto) === 1
+
+  const Icone = isLida ? ListCheck : List
+  const iconeCor = isLida ? '#10B981' : '#9CA3AF'
+  const tituloCor = isLida ? 'text-cinza-800' : 'text-cinza-500'
+
   return (
     <TouchableOpacity
       activeOpacity={0.7}
       onPress={() => onOpen(notificacao)}
-      className="mb-3 w-full rounded-xl border border-cinza-200 bg-white p-3.5 shadow-sm"
+      className="mb-3 w-full flex-row items-center gap-3 rounded-xl border border-cinza-200 bg-white p-3.5 shadow-sm"
     >
-      <View className="flex-row items-center justify-between gap-2">
-        <View className="flex-1 flex-row items-center gap-2">
-          <ListCheck size={24} color="#10B981" strokeWidth={2.5} />
-          <Text numberOfLines={1} className="text-cinza-800 flex-1 font-inter-semibold text-base">
+      <View>
+        <Icone size={24} color={iconeCor} strokeWidth={2.5} />
+      </View>
+
+      <View className="flex-1 flex-col">
+        <View className="flex-row items-start justify-between gap-2">
+          <Text numberOfLines={1} className={`flex-1 font-inter-semibold text-base ${tituloCor}`}>
             {notificacao.documento_titulo}
           </Text>
+
+          <View className="rounded-md bg-purple-50 px-2 py-1">
+            <Text
+              numberOfLines={1}
+              className="max-w-[100px] font-inter-medium text-xs text-purple-700"
+            >
+              {notificacao.projeto_titulo}
+            </Text>
+          </View>
         </View>
 
-        <View className="rounded-md bg-purple-50 px-2 py-1">
-          <Text
-            numberOfLines={1}
-            className="max-w-[100px] font-inter-medium text-xs text-purple-700"
-          >
-            {notificacao.projeto_titulo}
-          </Text>
-        </View>
+        <Text className="font-inter-regular mt-1 text-sm text-cinza-600">{descricao}</Text>
       </View>
-      <Text className="font-inter-regular mt-1 pl-8 text-sm text-cinza-600">
-        {notificacao.descricao}
-      </Text>
     </TouchableOpacity>
   )
 })
@@ -96,7 +107,7 @@ export default function Notificacoes() {
 
   const handleOpenNotificacao = useCallback(
     async (notificacao: notificacaoService.Notificacao) => {
-      if (!notificacao?.id) return // Corrigido aqui (!notificacao?.id)
+      if (!notificacao?.id) return
 
       try {
         if (Number(notificacao.aberto) !== 1) {
