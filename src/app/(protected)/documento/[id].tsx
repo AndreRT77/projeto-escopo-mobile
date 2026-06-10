@@ -35,6 +35,22 @@ function formatDate(date?: string) {
   return parsedDate.toLocaleDateString('pt-BR')
 }
 
+function pegarCampoDocumento(
+  documento: documentoService.DetalhesDocumento | null,
+  campos: (keyof documentoService.DetalhesDocumento)[],
+  fallback?: string | number,
+) {
+  for (const campo of campos) {
+    const valor = documento?.[campo]
+
+    if (valor !== undefined && valor !== null && valor !== '') {
+      return valor
+    }
+  }
+
+  return fallback
+}
+
 export default function Documento() {
   const router = useRouter()
   const params = useLocalSearchParams()
@@ -45,6 +61,11 @@ export default function Documento() {
 
     return Array.isArray(id) ? id[0] : id
   }, [params.id])
+  const projetoIdParam = useMemo(() => {
+    const id = params.projetoId || params.projeto_id
+
+    return Array.isArray(id) ? id[0] : id
+  }, [params.projetoId, params.projeto_id])
 
   const [documento, setDocumento] = useState<documentoService.DetalhesDocumento | null>(null)
   const [versoes, setVersoes] = useState<documentoService.VersaoMin[]>([])
@@ -54,7 +75,6 @@ export default function Documento() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  const [editingTitle, setEditingTitle] = useState(false)
   const [editingContent, setEditingContent] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
@@ -119,8 +139,6 @@ export default function Documento() {
     }
 
     if (!titleChanged && !contentChanged) {
-      setEditingTitle(false)
-      setEditingContent(false)
       return
     }
 
@@ -136,7 +154,6 @@ export default function Documento() {
       }
 
       await refreshDocumento()
-      setEditingTitle(false)
       setEditingContent(false)
       showAlert('Documento salvo com sucesso!', 'success')
     } catch (error) {
@@ -184,11 +201,21 @@ export default function Documento() {
     )
   }
 
+  const projetoId = pegarCampoDocumento(documento, ['projeto_id', 'projetoId'], projetoIdParam)
+  const createdAt =
+    versoes.length > 0
+      ? [...versoes].sort(
+          (a, b) => new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime(),
+        )[0]?.criado_em
+      : undefined
+  const hasChanges = titulo.trim() !== documento.titulo || conteudo !== (documento.conteudo || '')
+
   if (commentsOpen) {
     return (
       <SafeAreaView className="flex-1 bg-white">
         <Comentarios
           documentoId={documentoId}
+          projetoId={projetoId}
           onVoltar={() => setCommentsOpen(false)}
           onErro={(mensagem) => showAlert(mensagem, 'error')}
         />
@@ -196,74 +223,64 @@ export default function Documento() {
     )
   }
 
-  const createdAt = versoes.length > 0 ? versoes[versoes.length - 1].criado_em : undefined
-  const hasChanges = titulo.trim() !== documento.titulo || conteudo !== (documento.conteudo || '')
-
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-fundo">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View className="flex-1 px-4 pt-3">
-          <View className="flex-row items-center">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="h-10 w-10 items-center justify-center"
-            >
-              <ChevronsLeft size={34} color="#111827" strokeWidth={2.5} />
-            </TouchableOpacity>
+          <View className="relative z-10 border-b border-cinza-400 pb-2">
+            <View className="mb-2 flex-row items-center gap-3">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                className="h-10 w-10 items-center justify-center"
+              >
+                <ChevronsLeft size={34} color="#111827" strokeWidth={2.5} />
+              </TouchableOpacity>
 
-            {editingTitle ? (
               <TextInput
                 value={titulo}
                 onChangeText={setTitulo}
-                autoFocus
-                className="ml-2 h-8 flex-1 rounded border border-cinza-600 px-1 py-0 font-inter-bold text-2xl text-black"
+                className="max-w-[310px] flex-1 rounded border border-transparent px-1 py-0 font-inter-bold text-2xl text-black"
                 selectionColor={PURPLE}
               />
-            ) : (
+            </View>
+
+            <Text className={`text-sm ${hasChanges ? 'text-alert' : 'text-variant'}`}>
+              {hasChanges
+                ? 'Alterações não salvas!'
+                : `Última Alteração: ${formatDate(documento.ultima_alteracao)}`}
+            </Text>
+            <Text className="text-sm text-black">
+              Data de criação: {formatDate(documento.criado_em || createdAt)}
+            </Text>
+
+            <View className="absolute bottom-2 right-3 flex-row items-center gap-7">
               <TouchableOpacity
-                onPress={() => setEditingTitle(true)}
-                className="ml-2 flex-1 justify-center"
+                onPress={abrirHistorico}
+                className="h-10 w-10 items-center justify-center"
               >
-                <Text className="font-inter-bold text-2xl text-black" numberOfLines={1}>
-                  {titulo}
-                </Text>
+                <History size={40} color={LIGHT_PURPLE} strokeWidth={2} />
               </TouchableOpacity>
-            )}
-          </View>
 
-          <View className="mt-1 border-b border-cinza-400 pb-1">
-            <View className="flex-row items-end justify-between">
-              <View className="flex-1 pr-3">
-                <Text className={`text-sm ${hasChanges ? 'text-alert' : 'text-[#B79BE8]'}`}>
-                  {hasChanges
-                    ? 'Alterações não salvas!'
-                    : `Última Alteração: ${formatDate(documento.ultima_alteracao)}`}
-                </Text>
-                <Text className="text-sm text-black">Data de criação: {formatDate(createdAt)}</Text>
-              </View>
-
-              <View className="flex-row items-center gap-4">
-                <TouchableOpacity
-                  onPress={abrirHistorico}
-                  className="h-11 w-11 items-center justify-center"
-                >
-                  <History size={43} color={LIGHT_PURPLE} strokeWidth={2.1} />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setCommentsOpen(true)}
-                  className="h-10 w-10 items-center justify-center rounded-lg bg-base"
-                >
-                  <MessagesSquare size={27} color="#FFFFFF" strokeWidth={2.2} />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => setCommentsOpen(true)}
+                className="h-10 w-10 items-center justify-center rounded-lg bg-base"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 4,
+                }}
+              >
+                <MessagesSquare size={24} color="#FFFFFF" strokeWidth={2} />
+              </TouchableOpacity>
             </View>
           </View>
 
-          <View className="mt-3 flex-1 rounded-2xl border border-cinza-300 bg-white p-4">
+          <View className="relative z-0 mt-3 flex-1 rounded-2xl border border-cinza-300 bg-white px-4 py-4">
             {editingContent ? (
               <TextInput
                 value={conteudo}
@@ -271,6 +288,8 @@ export default function Documento() {
                 multiline
                 textAlignVertical="top"
                 selectionColor={PURPLE}
+                placeholder="Este documento ainda não possui conteúdo."
+                placeholderTextColor="#6B7280"
                 className="flex-1 p-0 font-inter text-base leading-6 text-black"
               />
             ) : (

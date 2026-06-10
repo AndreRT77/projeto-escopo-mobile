@@ -1,7 +1,8 @@
 import React from 'react'
-import { Linking, View } from 'react-native'
+import { Image, Linking, ScrollView, View } from 'react-native'
 
 import { Text } from '@/components/ui/Text'
+import { ENV } from '@/constants/env'
 
 type MarkdownRendererProps = {
   valor?: string | null
@@ -13,7 +14,12 @@ type MarkdownRendererProps = {
 
 type ListaAtual = {
   tipo: 'ol' | 'ul'
-  itens: string[]
+  itens: ListaItem[]
+}
+
+type ListaItem = {
+  texto: string
+  checked?: boolean
 }
 
 type BlocoCodigoAtual = {
@@ -22,8 +28,26 @@ type BlocoCodigoAtual = {
   linhas: string[]
 }
 
+type TabelaAtual = {
+  linhas: string[][]
+}
+
 function linkSeguro(url: string) {
   return /^(https?:|mailto:|\/)/i.test(url) ? url : ''
+}
+
+function uriSeguro(url: string) {
+  const destino = String(url || '').trim()
+
+  if (!/^(https?:|file:|data:image\/|\/)/i.test(destino)) {
+    return ''
+  }
+
+  if (destino.startsWith('/')) {
+    return `${ENV.API_URL.replace(/\/$/, '')}${destino}`
+  }
+
+  return destino
 }
 
 function abrirLink(url: string) {
@@ -182,25 +206,103 @@ function ItemLista({
   compact,
   colorClass,
 }: {
-  item: string
+  item: ListaItem
   index: number
   tipo: 'ol' | 'ul'
   compact: boolean
   colorClass: string
 }) {
+  const marcadorCheckbox = item.checked === undefined ? null : item.checked ? '☑' : '☐'
+
   return (
     <View key={`${tipo}-${index}`} className="mb-1 flex-row">
       <Text
         className={`${compact ? 'text-sm leading-5' : 'text-base leading-7'} w-7 ${colorClass}`}
       >
-        {tipo === 'ol' ? `${index + 1}.` : '•'}
+        {marcadorCheckbox || (tipo === 'ol' ? `${index + 1}.` : '•')}
       </Text>
       <Text
         className={`${compact ? 'text-sm leading-5' : 'text-base leading-7'} flex-1 ${colorClass}`}
       >
-        {renderizarInline(item, `${tipo}-${index}`, colorClass)}
+        {renderizarInline(item.texto, `${tipo}-${index}`, colorClass)}
       </Text>
     </View>
+  )
+}
+
+function ImagemMarkdown({
+  alt,
+  url,
+  chave,
+  compact,
+}: {
+  alt: string
+  url: string
+  chave: string
+  compact: boolean
+}) {
+  const uri = uriSeguro(url)
+
+  if (!uri) {
+    return null
+  }
+
+  return (
+    <View key={chave} className={compact ? 'mb-3' : 'mb-4'}>
+      <Image
+        source={{ uri }}
+        className="w-full rounded-lg bg-cinza-200"
+        style={{ aspectRatio: 16 / 9 }}
+        resizeMode="cover"
+      />
+      {!!alt && <Text className="mt-1 text-xs text-cinza-500">{alt}</Text>}
+    </View>
+  )
+}
+
+function TabelaMarkdown({
+  tabela,
+  chave,
+  compact,
+  colorClass,
+}: {
+  tabela: TabelaAtual
+  chave: string
+  compact: boolean
+  colorClass: string
+}) {
+  const [cabecalho, ...linhas] = tabela.linhas
+
+  return (
+    <ScrollView key={chave} horizontal className={compact ? 'mb-3' : 'mb-4'}>
+      <View className="overflow-hidden rounded-lg border border-cinza-300">
+        {!!cabecalho && (
+          <View className="flex-row bg-cinza-200">
+            {cabecalho.map((celula, index) => (
+              <Text
+                key={`th-${index}`}
+                className={`${compact ? 'text-xs' : 'text-sm'} min-w-28 border-r border-cinza-300 px-3 py-2 font-inter-semibold text-cinza-700`}
+              >
+                {renderizarInline(celula, `${chave}-th-${index}`, 'text-cinza-700')}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {linhas.map((linha, rowIndex) => (
+          <View key={`tr-${rowIndex}`} className="flex-row border-t border-cinza-300 bg-white">
+            {linha.map((celula, cellIndex) => (
+              <Text
+                key={`td-${rowIndex}-${cellIndex}`}
+                className={`${compact ? 'text-xs' : 'text-sm'} min-w-28 border-r border-cinza-200 px-3 py-2 ${colorClass}`}
+              >
+                {renderizarInline(celula, `${chave}-td-${rowIndex}-${cellIndex}`, colorClass)}
+              </Text>
+            ))}
+          </View>
+        ))}
+      </View>
+    </ScrollView>
   )
 }
 
@@ -218,6 +320,26 @@ export default function MarkdownRenderer({
   let listaAtual: ListaAtual | null = null
   let paragrafoAtual: string[] = []
   let blocoCodigo: BlocoCodigoAtual | null = null
+  let tabelaAtual: TabelaAtual | null = null
+
+  function celulasTabela(linha: string) {
+    return linha
+      .trim()
+      .replace(/^\|/, '')
+      .replace(/\|$/, '')
+      .split('|')
+      .map((celula) => celula.trim())
+  }
+
+  function ehSeparadorTabela(linha: string) {
+    const celulas = celulasTabela(linha)
+
+    return celulas.length > 1 && celulas.every((celula) => /^:?-{3,}:?$/.test(celula))
+  }
+
+  function ehLinhaTabela(linha: string) {
+    return linha.includes('|') && !ehSeparadorTabela(linha) && celulasTabela(linha).length > 1
+  }
 
   function fecharParagrafo() {
     if (paragrafoAtual.length === 0) return
@@ -257,6 +379,23 @@ export default function MarkdownRenderer({
     listaAtual = null
   }
 
+  function fecharTabela() {
+    if (!tabelaAtual) return
+
+    const tabela = tabelaAtual
+
+    elementos.push(
+      <TabelaMarkdown
+        key={`tabela-${elementos.length}`}
+        chave={`tabela-${elementos.length}`}
+        tabela={tabela}
+        compact={compact}
+        colorClass={colorClass}
+      />,
+    )
+    tabelaAtual = null
+  }
+
   function fecharBlocoCodigo() {
     if (!blocoCodigo) return
 
@@ -274,28 +413,30 @@ export default function MarkdownRenderer({
     blocoCodigo = null
   }
 
-  linhas.forEach((linha, index) => {
+  for (let index = 0; index < linhas.length; index += 1) {
+    const linha = linhas[index]
     const marcadorCodigo = linha.trim().match(/^(`{3,}|'{3,})\s*([\w-]+)?\s*$/)
 
     if (blocoCodigo) {
       if (marcadorCodigo && marcadorCodigo[1][0] === blocoCodigo.marcador[0]) {
         fecharBlocoCodigo()
-        return
+        continue
       }
 
       blocoCodigo.linhas.push(linha)
-      return
+      continue
     }
 
     if (marcadorCodigo) {
       fecharParagrafo()
       fecharLista()
+      fecharTabela()
       blocoCodigo = {
         marcador: marcadorCodigo[1],
         linguagem: marcadorCodigo[2] || '',
         linhas: [],
       }
-      return
+      continue
     }
 
     const textoLimpo = linha.trim()
@@ -303,13 +444,64 @@ export default function MarkdownRenderer({
     if (!textoLimpo) {
       fecharParagrafo()
       fecharLista()
-      return
+      fecharTabela()
+      continue
     }
 
-    const titulo = textoLimpo.match(/^(#{1,3})\s+(.+)$/)
-    const itemLista = textoLimpo.match(/^[-*]\s+(.+)$/)
+    const titulo = textoLimpo.match(/^(#{1,6})\s+(.+)$/)
+    const itemLista = textoLimpo.match(/^[-*+]\s+(.+)$/)
     const itemOrdenado = textoLimpo.match(/^\d+\.\s+(.+)$/)
     const citacao = textoLimpo.match(/^>\s+(.+)$/)
+    const imagem = textoLimpo.match(/^!\[([^\]]*)\]\(([^)]+)\)$/)
+    const divisor = textoLimpo.match(/^(-{3,}|\*{3,}|_{3,})$/)
+    const proximaLinha = linhas[index + 1] || ''
+    const inicioTabela = ehLinhaTabela(textoLimpo) && ehSeparadorTabela(proximaLinha)
+
+    if (tabelaAtual && ehSeparadorTabela(textoLimpo)) {
+      continue
+    }
+
+    if (tabelaAtual && ehLinhaTabela(textoLimpo)) {
+      tabelaAtual.linhas.push(celulasTabela(textoLimpo))
+      continue
+    }
+
+    if (inicioTabela) {
+      fecharParagrafo()
+      fecharLista()
+      tabelaAtual = { linhas: [celulasTabela(textoLimpo)] }
+      index += 1
+      continue
+    }
+
+    fecharTabela()
+
+    if (imagem) {
+      fecharParagrafo()
+      fecharLista()
+      elementos.push(
+        <ImagemMarkdown
+          key={`imagem-${index}`}
+          chave={`imagem-${index}`}
+          alt={imagem[1]}
+          url={imagem[2]}
+          compact={compact}
+        />,
+      )
+      continue
+    }
+
+    if (divisor) {
+      fecharParagrafo()
+      fecharLista()
+      elementos.push(
+        <View
+          key={`hr-${index}`}
+          className={`${compact ? 'my-2' : 'my-4'} h-px w-full bg-cinza-300`}
+        />,
+      )
+      continue
+    }
 
     if (titulo) {
       fecharParagrafo()
@@ -326,16 +518,20 @@ export default function MarkdownRenderer({
             ? compact
               ? 'mb-2 text-lg leading-6'
               : 'mb-3 text-[22px] leading-7'
-            : compact
-              ? 'mb-2 text-base leading-6'
-              : 'mb-2 text-lg leading-7'
+            : nivel === 3
+              ? compact
+                ? 'mb-2 text-base leading-6'
+                : 'mb-2 text-lg leading-7'
+              : compact
+                ? 'mb-1 text-sm leading-5'
+                : 'mb-2 text-base leading-6'
 
       elementos.push(
         <Text key={`titulo-${index}`} className={`${classe} font-inter-semibold ${colorClass}`}>
           {conteudo}
         </Text>,
       )
-      return
+      continue
     }
 
     if (itemLista || itemOrdenado) {
@@ -343,13 +539,20 @@ export default function MarkdownRenderer({
 
       const tipo = itemOrdenado ? 'ol' : 'ul'
 
-      if (listaAtual?.tipo !== tipo) {
+      if ((listaAtual as ListaAtual | null)?.tipo !== tipo) {
         fecharLista()
         listaAtual = { tipo, itens: [] }
       }
+      const lista = listaAtual as ListaAtual
 
-      listaAtual.itens.push(itemOrdenado?.[1] || itemLista?.[1] || '')
-      return
+      const textoItem = itemOrdenado?.[1] || itemLista?.[1] || ''
+      const task = textoItem.match(/^\[( |x|X)\]\s+(.+)$/)
+
+      lista.itens.push({
+        texto: task?.[2] || textoItem,
+        checked: task ? task[1].toLowerCase() === 'x' : undefined,
+      })
+      continue
     }
 
     if (citacao) {
@@ -367,15 +570,16 @@ export default function MarkdownRenderer({
           </Text>
         </View>,
       )
-      return
+      continue
     }
 
     fecharLista()
     paragrafoAtual.push(textoLimpo)
-  })
+  }
 
   fecharParagrafo()
   fecharLista()
+  fecharTabela()
   fecharBlocoCodigo()
 
   if (elementos.length === 0) {

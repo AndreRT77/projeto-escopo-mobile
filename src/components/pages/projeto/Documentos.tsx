@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { FilePlus, Trash2 } from 'lucide-react-native'
 import React from 'react'
 import { TouchableOpacity, View } from 'react-native'
@@ -19,7 +20,19 @@ export default function Documentos({
   projeto,
   onCriarDocumento,
 }: DocumentosProps) {
+  const router = useRouter()
   const categorias = documentos?.projeto?.categorias || []
+  const projetoId = projeto?.id || documentos?.projeto?.id
+
+  function abrirDocumento(documentoId: number) {
+    router.push({
+      pathname: '/documento/[id]',
+      params: {
+        id: String(documentoId),
+        ...(projetoId ? { projetoId: String(projetoId) } : {}),
+      },
+    } as any)
+  }
 
   return (
     <View className="w-full gap-6">
@@ -45,6 +58,7 @@ export default function Documentos({
               {doc.documentos.map((subdoc) => (
                 <TouchableOpacity
                   key={subdoc.id}
+                  onPress={() => abrirDocumento(subdoc.id)}
                   className="flex-row items-center justify-between border-b border-cinza-100 py-3 last:border-0"
                 >
                   <View className="flex-1 pr-4">

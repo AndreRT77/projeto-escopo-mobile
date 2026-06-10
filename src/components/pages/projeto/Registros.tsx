@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { ChevronDown, ChevronRight } from 'lucide-react-native'
 import React from 'react'
 import { TouchableOpacity, View } from 'react-native'
@@ -32,6 +33,7 @@ export default function Registros({
   expandRegister,
   setExpandRegister,
 }: RegistrosProps) {
+  const router = useRouter()
   // Verifica se o objeto formatRegistros existe e tem pelo menos um ano (chave)
   const hasRegistros = formatRegistros && Object.keys(formatRegistros).length > 0
 
@@ -68,8 +70,9 @@ export default function Registros({
 
                     {expandRegister[mes] !== false &&
                       registros.map((reg) => (
-                        <View
+                        <TouchableOpacity
                           key={reg.id}
+                          onPress={() => router.push(`/registro/${reg.id}` as any)}
                           className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
                         >
                           <View className="flex-row items-start justify-between">
@@ -84,9 +87,9 @@ export default function Registros({
                             </Text>
                           </View>
                           <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
-                            {reg.conteudo}
+                            {reg.conteudo || 'Sem conteúdo.'}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                       ))}
                   </View>
                 ))}

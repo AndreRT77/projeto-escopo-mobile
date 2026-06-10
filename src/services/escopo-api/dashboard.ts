@@ -15,6 +15,7 @@ export interface Convite {
 
 export interface Documento {
   id: number
+  projeto_id?: number
   projeto: string
   categoria: string
   documento: string

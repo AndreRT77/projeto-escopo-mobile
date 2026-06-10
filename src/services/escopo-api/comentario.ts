@@ -197,9 +197,9 @@ function numeroOuNull(valor: unknown): number | null {
 
 export interface CriarComentario {
   conteudo: string
-  parent_id?: number | string | null
-  registro_referencia_id?: number | string | null
-  comentario_tipo_id: number | string
+  parent_id?: number | null
+  registro_referencia_id?: number | null
+  comentario_tipo_id: number
 }
 
 export async function criarComentarioEmUmDocumento(

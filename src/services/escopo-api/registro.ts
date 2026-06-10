@@ -4,7 +4,7 @@ import { api } from '@/services/api'
 export interface Registro {
   id: number
   titulo: string
-  conteudo: string
+  conteudo: string | null
   atualizado_em: string
   criado_em: string
 }
@@ -41,7 +41,7 @@ export async function atualizarTitulo(
 export async function atualizarConteudo(
   registroId: string | number,
   body: {
-    conteudo: string
+    conteudo: string | null
   },
 ) {
   const response = await api.patch(`${ENV.API_URL}/api/v1/registro/${registroId}/conteudo`, body)

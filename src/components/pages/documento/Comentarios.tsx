@@ -1,17 +1,29 @@
 import { STORAGE_KEYS } from '@/constants/storage'
+import { ENV } from '@/constants/env'
 import type { Comentario } from '@/services/escopo-api/comentario'
 import * as comentarioService from '@/services/escopo-api/comentario'
 import * as registroService from '@/services/escopo-api/registro'
+import * as userService from '@/services/escopo-api/usuario'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { ChevronsLeft, SendHorizontal, X } from 'lucide-react-native'
+import { Check, ChevronsLeft, Lightbulb, SendHorizontal, X } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Image, ScrollView, TextInput, TouchableOpacity, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native'
 
 import { Text } from '@/components/ui/Text'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 interface ComentariosProps {
   documentoId: string | number
+  projetoId?: string | number | null
   onVoltar: () => void
   onErro?: (mensagem: string) => void
 }
@@ -51,6 +63,13 @@ type RegistroReferencia = {
   apagado: boolean
   titulo: string
 }
+
+type RegistroOpcao = {
+  id: number
+  titulo: string
+}
+
+type ModoComentario = 'comentario' | 'sugestao'
 
 const PURPLE = '#552BA9'
 
@@ -135,17 +154,86 @@ function iniciais(nome: string) {
     .toUpperCase()
 }
 
+function normalizarFoto(valor: any) {
+  const foto =
+    typeof valor === 'object' && valor !== null
+      ? textoDoValor(
+          pegar(
+            valor,
+            ['url', 'uri', 'src', 'path', 'caminho', 'foto_perfil', 'foto', 'avatar', 'base64'],
+            '',
+          ),
+        ).trim()
+      : textoDoValor(valor).trim()
+
+  if (!foto) return ''
+
+  if (/^(https?:|file:|data:image\/)/i.test(foto)) {
+    return foto
+  }
+
+  if (foto.startsWith('/')) {
+    return `${ENV.API_URL.replace(/\/$/, '')}${foto}`
+  }
+
+  if (/^[A-Za-z0-9+/=]{80,}$/.test(foto)) {
+    return `data:image/jpeg;base64,${foto}`
+  }
+
+  return foto
+}
+
+function numeroPositivoOuNull(valor: unknown) {
+  if (typeof valor === 'number' && Number.isFinite(valor) && valor > 0) {
+    return valor
+  }
+
+  if (typeof valor === 'string') {
+    const numero = Number(valor.trim())
+
+    return Number.isFinite(numero) && numero > 0 ? numero : null
+  }
+
+  return null
+}
+
+function normalizarRegistroOpcao(registro: registroService.Registro): RegistroOpcao | null {
+  const id = numeroPositivoOuNull(pegar(registro, ['id'], null))
+
+  if (!id) return null
+
+  return {
+    id,
+    titulo: textoDoValor(pegar(registro, ['titulo', 'nome', 'registro_titulo'], 'Registro')),
+  }
+}
+
 async function lerUsuarioAtual(): Promise<UsuarioAtual> {
   try {
     const usuarioString = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_USER)
     const usuario = usuarioString ? JSON.parse(usuarioString) : {}
+    const email = pegar(usuario, ['email'], '')
+    const usuarioAtualizado = email
+      ? await userService.getUserByEmail(email).catch(() => null)
+      : null
+    const usuarioFonte = usuarioAtualizado || usuario
+
+    if (usuarioAtualizado) {
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.AUTH_USER,
+        JSON.stringify({
+          ...usuario,
+          ...usuarioAtualizado,
+        }),
+      )
+    }
 
     return {
-      id: pegar(usuario, ['id', 'usuario_id', 'usuarioId'], null),
-      nome: pegar(usuario, ['nome', 'name', 'email'], 'Usuário'),
+      id: pegar(usuarioFonte, ['id', 'usuario_id', 'usuarioId'], null),
+      nome: pegar(usuarioFonte, ['nome', 'name', 'email'], 'Usuário'),
       cargo: textoDoValor(
         pegar(
-          usuario,
+          usuarioFonte,
           [
             'cargo',
             'perfil',
@@ -159,7 +247,7 @@ async function lerUsuarioAtual(): Promise<UsuarioAtual> {
           '',
         ),
       ),
-      foto: pegar(usuario, ['foto_perfil', 'foto', 'avatar'], ''),
+      foto: normalizarFoto(pegar(usuarioFonte, ['foto_perfil', 'foto', 'avatar'], '')),
     }
   } catch {
     return { id: null, nome: 'Usuário', cargo: '', foto: '' }
@@ -252,9 +340,22 @@ function autorComentario(comentario: any) {
   return {
     nome,
     cargo,
-    foto:
-      pegar(comentario, ['foto_perfil', 'foto', 'avatar'], '') ||
-      pegar(usuario, ['foto_perfil', 'foto', 'avatar'], ''),
+    foto: normalizarFoto(
+      pegar(
+        comentario,
+        [
+          'foto_perfil',
+          'foto',
+          'avatar',
+          'autor_foto_perfil',
+          'criador_foto_perfil',
+          'usuario_foto_perfil',
+          'user_foto_perfil',
+          'parent_autor_foto_perfil',
+        ],
+        '',
+      ) || pegar(usuario, ['foto_perfil', 'foto', 'avatar'], ''),
+    ),
   }
 }
 
@@ -603,7 +704,7 @@ function adaptarComentario(
     referencia:
       tipoId === 3
         ? {
-            autor: 'Sugestão de Requisito',
+            autor: 'Registro sugerido',
             cargo: tituloRegistro || 'Registro apagado',
             texto: '',
             registroId: registroLinkId || null,
@@ -759,6 +860,8 @@ function ComentarioCard({
   onResponder: (comentario: ComentarioPreparado) => void
 }) {
   const referencia = comentario.resposta || comentario.referencia
+  const tipoRotulo =
+    comentario.tipoId === 3 ? 'Sugestão' : comentario.tipoId === 2 ? 'Resposta' : ''
 
   return (
     <View className="mb-10 flex-row items-start gap-4">
@@ -776,6 +879,11 @@ function ComentarioCard({
                 numberOfLines={1}
               >
                 {comentario.cargo}
+              </Text>
+            )}
+            {!!tipoRotulo && (
+              <Text className="rounded bg-cinza-200 px-2 py-0.5 text-xs text-cinza-700">
+                {tipoRotulo}
               </Text>
             )}
           </View>
@@ -806,7 +914,12 @@ function ComentarioCard({
   )
 }
 
-export default function Comentarios({ documentoId, onVoltar, onErro }: ComentariosProps) {
+export default function Comentarios({
+  documentoId,
+  projetoId,
+  onVoltar,
+  onErro,
+}: ComentariosProps) {
   const [usuarioAtual, setUsuarioAtual] = useState<UsuarioAtual>({
     id: null,
     nome: 'Usuário',
@@ -819,6 +932,12 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
   const [erro, setErro] = useState('')
   const [texto, setTexto] = useState('')
   const [respostaPara, setRespostaPara] = useState<ComentarioPreparado | null>(null)
+  const [modoComentario, setModoComentario] = useState<ModoComentario>('comentario')
+  const [registros, setRegistros] = useState<RegistroOpcao[]>([])
+  const [carregandoRegistros, setCarregandoRegistros] = useState(false)
+  const [erroRegistros, setErroRegistros] = useState('')
+  const [registroSelecionadoId, setRegistroSelecionadoId] = useState<number | null>(null)
+  const [registroManualId, setRegistroManualId] = useState('')
 
   const usuarioAvatar = useMemo(
     () => ({
@@ -827,6 +946,14 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
     }),
     [usuarioAtual],
   )
+  const tipoEnvio = respostaPara ? 'resposta' : modoComentario
+  const registroReferenciaDigitado = registroManualId.trim()
+  const registroReferenciaId =
+    registroSelecionadoId || numeroPositivoOuNull(registroReferenciaDigitado)
+  const podeEnviar =
+    texto.trim().length > 0 &&
+    !enviando &&
+    (tipoEnvio !== 'sugestao' || Boolean(registroReferenciaId))
 
   const carregarComentarios = useCallback(
     async (usuario: UsuarioAtual) => {
@@ -857,6 +984,47 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
   useEffect(() => {
     let ativo = true
 
+    async function carregarRegistros() {
+      const projetoNormalizado = numeroPositivoOuNull(projetoId)
+
+      if (!projetoNormalizado) {
+        setRegistros([])
+        setErroRegistros('')
+        setCarregandoRegistros(false)
+        return
+      }
+
+      try {
+        setCarregandoRegistros(true)
+        setErroRegistros('')
+
+        const registrosApi = await registroService.obterRegistrosDeUmProjeto(projetoNormalizado)
+
+        if (!ativo) return
+
+        setRegistros(registrosApi.map(normalizarRegistroOpcao).filter(Boolean) as RegistroOpcao[])
+      } catch (error) {
+        if (!ativo) return
+
+        setRegistros([])
+        setErroRegistros(extractApiErrorMessage(error))
+      } finally {
+        if (ativo) {
+          setCarregandoRegistros(false)
+        }
+      }
+    }
+
+    carregarRegistros()
+
+    return () => {
+      ativo = false
+    }
+  }, [projetoId])
+
+  useEffect(() => {
+    let ativo = true
+
     async function carregar() {
       const usuario = await lerUsuarioAtual()
 
@@ -873,21 +1041,62 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
     }
   }, [carregarComentarios, documentoId])
 
+  function alternarSugestao() {
+    if (respostaPara) return
+
+    setModoComentario((modoAtual) => (modoAtual === 'sugestao' ? 'comentario' : 'sugestao'))
+    setErro('')
+  }
+
+  function responderComentario(comentario: ComentarioPreparado) {
+    setRespostaPara(comentario)
+    setModoComentario('comentario')
+    setErro('')
+  }
+
+  function cancelarSugestao() {
+    setModoComentario('comentario')
+    setRegistroSelecionadoId(null)
+    setRegistroManualId('')
+    setErro('')
+  }
+
   async function enviarComentario() {
     if (!texto.trim() || enviando) return
+
+    const conteudo = texto.trim()
+    const comentarioTipoId = respostaPara ? 2 : modoComentario === 'sugestao' ? 3 : 1
+    const parentId = comentarioTipoId === 2 ? numeroPositivoOuNull(respostaPara?.id) : null
+    const referenciaId =
+      comentarioTipoId === 3
+        ? registroSelecionadoId || numeroPositivoOuNull(registroManualId)
+        : null
+
+    if (comentarioTipoId === 2 && !parentId) {
+      setErro('Selecione um comentário válido para responder.')
+      return
+    }
+
+    if (comentarioTipoId === 3 && !referenciaId) {
+      setErro('Selecione ou informe o ID de um registro para criar a sugestão.')
+      return
+    }
 
     try {
       setEnviando(true)
       setErro('')
       await comentarioService.criarComentarioEmUmDocumento(documentoId, {
-        conteudo: texto.trim(),
-        parent_id: respostaPara?.id || null,
-        registro_referencia_id: null,
-        comentario_tipo_id: respostaPara ? 2 : 1,
+        conteudo,
+        parent_id: parentId,
+        registro_referencia_id: referenciaId,
+        comentario_tipo_id: comentarioTipoId,
       })
 
       setTexto('')
       setRespostaPara(null)
+      setModoComentario('comentario')
+      setRegistroSelecionadoId(null)
+      setRegistroManualId('')
       await carregarComentarios(usuarioAtual)
     } catch (error) {
       const mensagem = extractApiErrorMessage(error)
@@ -899,73 +1108,157 @@ export default function Comentarios({ documentoId, onVoltar, onErro }: Comentari
   }
 
   return (
-    <View className="flex-1 bg-white px-4 pt-3">
-      <View className="mb-4 flex-row items-center border-b border-cinza-200 pb-3">
-        <TouchableOpacity onPress={onVoltar} className="h-10 w-10 items-center justify-center">
-          <ChevronsLeft size={34} color="#374151" strokeWidth={2.5} />
-        </TouchableOpacity>
+    <KeyboardAvoidingView
+      className="flex-1 bg-white"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View className="flex-1 px-4 pt-3">
+        <View className="mb-4 flex-row items-center border-b border-cinza-200 pb-3">
+          <TouchableOpacity onPress={onVoltar} className="h-10 w-10 items-center justify-center">
+            <ChevronsLeft size={34} color="#374151" strokeWidth={2.5} />
+          </TouchableOpacity>
 
-        <Text className="ml-1 font-inter-bold text-2xl text-cinza-700">Comentários</Text>
-      </View>
+          <Text className="ml-1 font-inter-bold text-2xl text-cinza-700">Comentários</Text>
+        </View>
 
-      {!!erro && <Text className="mb-2 text-sm text-alert">{erro}</Text>}
+        {!!erro && <Text className="mb-2 text-sm text-alert">{erro}</Text>}
 
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="pb-28"
-        showsVerticalScrollIndicator={false}
-      >
-        {carregando ? (
-          <Text className="mt-8 text-cinza-500">Carregando comentários...</Text>
-        ) : comentarios.length === 0 ? (
-          <Text className="mt-8 text-cinza-500">Nenhum comentário encontrado.</Text>
-        ) : (
-          comentarios.map((comentario) => (
-            <ComentarioCard
-              key={String(comentario.id)}
-              comentario={comentario}
-              onResponder={setRespostaPara}
-            />
-          ))
-        )}
-      </ScrollView>
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName={
+            tipoEnvio === 'sugestao' ? 'pb-52' : respostaPara ? 'pb-40' : 'pb-32'
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {carregando ? (
+            <Text className="mt-8 text-cinza-500">Carregando comentários...</Text>
+          ) : comentarios.length === 0 ? (
+            <Text className="mt-8 text-cinza-500">Nenhum comentário encontrado.</Text>
+          ) : (
+            comentarios.map((comentario) => (
+              <ComentarioCard
+                key={String(comentario.id)}
+                comentario={comentario}
+                onResponder={responderComentario}
+              />
+            ))
+          )}
+        </ScrollView>
 
-      <View className="absolute bottom-0 left-4 right-4 border-t border-cinza-500 bg-white py-3">
-        {respostaPara && (
-          <View className="mb-2 flex-row items-center justify-between rounded bg-cinza-200 px-3 py-2">
-            <Text className="flex-1 text-xs text-cinza-700" numberOfLines={1}>
-              Respondendo {respostaPara.nome}: {respostaPara.texto}
-            </Text>
-            <TouchableOpacity onPress={() => setRespostaPara(null)} className="ml-2">
-              <X size={16} color="#374151" />
-            </TouchableOpacity>
-          </View>
-        )}
+        <View className="absolute bottom-0 left-4 right-4 border-t border-cinza-500 bg-white py-3">
+          {respostaPara && (
+            <View className="mb-2 flex-row items-center justify-between rounded bg-cinza-200 px-3 py-2">
+              <Text className="flex-1 text-xs text-cinza-700" numberOfLines={1}>
+                Respondendo {respostaPara.nome}: {respostaPara.texto}
+              </Text>
+              <TouchableOpacity onPress={() => setRespostaPara(null)} className="ml-2">
+                <X size={16} color="#374151" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-        <View className="flex-row items-center">
-          <Avatar comentario={usuarioAvatar} />
+          {tipoEnvio === 'sugestao' && (
+            <View className="mb-2 rounded bg-cinza-200 px-3 py-2">
+              <View className="flex-row items-center">
+                <Text className="mr-2 text-xs text-cinza-700">Sugestão para registro</Text>
 
-          <View className="ml-2 flex-1 flex-row items-center rounded-xl border border-cinza-500 px-3">
-            <TextInput
-              value={texto}
-              onChangeText={setTexto}
-              editable={!enviando}
-              maxLength={500}
-              placeholder="Escreva seu comentário"
-              placeholderTextColor="#6B7280"
-              className="min-h-9 flex-1 font-inter text-sm text-black"
-            />
+                <TextInput
+                  value={registroManualId}
+                  onChangeText={(valor) => {
+                    setRegistroManualId(valor)
+                    setRegistroSelecionadoId(null)
+                  }}
+                  editable={!enviando}
+                  keyboardType="number-pad"
+                  placeholder="ID"
+                  placeholderTextColor="#6B7280"
+                  className="h-8 w-20 rounded border border-cinza-300 bg-white px-2 font-inter text-xs text-black"
+                />
 
-            <TouchableOpacity
-              onPress={enviarComentario}
-              disabled={enviando || texto.trim().length === 0}
-              className="h-9 w-9 items-center justify-center disabled:opacity-40"
-            >
-              <SendHorizontal size={25} color={PURPLE} />
-            </TouchableOpacity>
+                <View className="ml-auto flex-row items-center gap-2">
+                  {carregandoRegistros && <ActivityIndicator size="small" color={PURPLE} />}
+                  <TouchableOpacity onPress={cancelarSugestao}>
+                    <X size={16} color="#374151" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {registros.length > 0 && (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+                  <View className="flex-row gap-2 pr-2">
+                    {registros.map((registro) => {
+                      const selecionado = registroSelecionadoId === registro.id
+
+                      return (
+                        <TouchableOpacity
+                          key={registro.id}
+                          onPress={() => {
+                            setRegistroSelecionadoId(selecionado ? null : registro.id)
+                            setRegistroManualId('')
+                          }}
+                          className={`max-w-40 flex-row items-center gap-1 rounded-full border px-2 py-1 ${
+                            selecionado ? 'border-base bg-white' : 'border-cinza-300'
+                          }`}
+                        >
+                          {selecionado && <Check size={12} color={PURPLE} />}
+                          <Text className="text-xs text-cinza-700" numberOfLines={1}>
+                            {registro.titulo}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                </ScrollView>
+              )}
+
+              {!!erroRegistros && (
+                <Text className="mt-1 text-xs text-cinza-500">{erroRegistros}</Text>
+              )}
+            </View>
+          )}
+
+          <View className="flex-row items-center">
+            <Avatar comentario={usuarioAvatar} />
+
+            <View className="ml-2 flex-1 flex-row items-center rounded-xl border border-cinza-500 px-3">
+              <TextInput
+                value={texto}
+                onChangeText={setTexto}
+                editable={!enviando}
+                maxLength={500}
+                placeholder={
+                  respostaPara
+                    ? 'Escreva sua resposta'
+                    : modoComentario === 'sugestao'
+                      ? 'Descreva a sugestão'
+                      : 'Escreva seu comentário'
+                }
+                placeholderTextColor="#6B7280"
+                className="max-h-24 min-h-9 flex-1 py-2 font-inter text-sm text-black"
+                multiline
+              />
+
+              {!respostaPara && (
+                <TouchableOpacity
+                  onPress={alternarSugestao}
+                  disabled={enviando}
+                  className="h-9 w-9 items-center justify-center disabled:opacity-40"
+                >
+                  <Lightbulb size={22} color={modoComentario === 'sugestao' ? PURPLE : '#6B7280'} />
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                onPress={enviarComentario}
+                disabled={!podeEnviar}
+                className="h-9 w-9 items-center justify-center disabled:opacity-40"
+              >
+                <SendHorizontal size={25} color={PURPLE} />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   )
 }

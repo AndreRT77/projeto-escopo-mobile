@@ -148,7 +148,10 @@ export default function ProjectDetails() {
         titulo: 'Novo Documento',
       })
 
-      router.push(`/documento/${novoDocumento.id}`)
+      router.push({
+        pathname: '/documento/[id]',
+        params: { id: String(novoDocumento.id), projetoId: String(id) },
+      } as any)
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
     }

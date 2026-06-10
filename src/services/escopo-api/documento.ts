@@ -39,8 +39,13 @@ export interface DetalhesDocumento {
   titulo: string
   conteudo: string
   ultima_alteracao: string
+  criado_em?: string
   projeto: string
   categoria: string
+  projeto_id?: number | string
+  projetoId?: number | string
+  categoria_id?: number | string
+  categoriaId?: number | string
 }
 
 export async function obterDetalhesDeUmDocumento(

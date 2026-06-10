@@ -135,7 +135,21 @@ export default function Dashboard() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pb-2">
             {documentos && documentos.length > 0 ? (
               documentos.map((documento) => (
-                <Link href={`/documento/${documento?.id}`} key={documento?.id} asChild>
+                <Link
+                  href={
+                    {
+                      pathname: '/documento/[id]',
+                      params: {
+                        id: String(documento?.id),
+                        ...(documento?.projeto_id
+                          ? { projetoId: String(documento.projeto_id) }
+                          : {}),
+                      },
+                    } as any
+                  }
+                  key={documento?.id}
+                  asChild
+                >
                   <TouchableOpacity className="mr-3 w-[196px] overflow-hidden rounded-xl border-2 border-cinza-300 bg-white p-4 shadow-sm">
                     <View className="mb-3 flex-row items-center gap-3">
                       <Folder size={24} color="#6B7280" />
