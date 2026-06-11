@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronsLeft, PencilLine, Trash2 } from 'lucide-react-native'
+import { ChevronsLeft, PencilLine, Trash2, Plus } from 'lucide-react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert, Image, Linking, Modal, ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
@@ -16,6 +17,16 @@ import * as reuniaoService from '@/services/escopo-api/reuniao'
 import * as usuarioService from '@/services/escopo-api/usuario'
 import * as usuarioReuniaoService from '@/services/escopo-api/usuario-reuniao'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
+import {
+  editarGravacaoSchema,
+  EditarGravacaoData,
+  criarLinkSchema,
+  CriarLinkData,
+  adicionarUsuarioSchema,
+  AdicionarUsuarioData,
+  adicionarConvidadoSchema,
+  AdicionarConvidadoData,
+} from '@/schemas/reuniao.schema'
 
 export default function DetailsMeeting() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -25,8 +36,7 @@ export default function DetailsMeeting() {
   const [detalhesReuniao, setDetalhesReuniao] = useState<reuniaoService.DetalhesReuniao>()
   const [loading, setLoading] = useState(true)
 
-  // Estados de Visibilidade dos Modais
-  const [modalGravaçãoVisible, setModalGravaçãoVisible] = useState(false)
+  const [modalGravacaoVisible, setModalGravacaoVisible] = useState(false)
   const [modalTranscricaoVisible, setModalTranscricaoVisible] = useState(false)
   const [modalAddLinkVisible, setModalAddLinkVisible] = useState(false)
   const [modalAddUsuarioVisible, setModalAddUsuarioVisible] = useState(false)
@@ -34,31 +44,55 @@ export default function DetailsMeeting() {
 
   const [linkGravacaoEditId, setLinkGravacaoEditId] = useState<number | null>(null)
 
-  // Configuração dos formulários com react-hook-form
+  const [modalEditarConvidadoVisible, setModalEditarConvidadoVisible] = useState(false)
+  const [convidadoEditId, setConvidadoEditId] = useState<number | null>(null)
+
+  const {
+    control: controlEditarConvidado,
+    handleSubmit: handleSubmitEditarConvidado,
+    setValue: setValueEditarConvidado,
+    reset: resetEditarConvidado,
+  } = useForm<AdicionarConvidadoData>({
+    resolver: zodResolver(adicionarConvidadoSchema),
+    defaultValues: { nome: '', cargo: '' },
+  })
+
   const {
     control: controlGravacao,
     handleSubmit: handleSubmitGravacao,
     setValue: setValueGravacao,
     reset: resetGravacao,
-  } = useForm({ defaultValues: { nome: '', url: '' } })
+  } = useForm<EditarGravacaoData>({
+    resolver: zodResolver(editarGravacaoSchema),
+    defaultValues: { nome: '', url: '' },
+  })
 
   const {
     control: controlLink,
     handleSubmit: handleSubmitLink,
     reset: resetLink,
-  } = useForm({ defaultValues: { nome: '', url: '' } })
+  } = useForm<CriarLinkData>({
+    resolver: zodResolver(criarLinkSchema),
+    defaultValues: { nome: '', url: '' },
+  })
 
   const {
     control: controlUsuario,
     handleSubmit: handleSubmitUsuario,
     reset: resetUsuario,
-  } = useForm({ defaultValues: { email: '' } })
+  } = useForm<AdicionarUsuarioData>({
+    resolver: zodResolver(adicionarUsuarioSchema),
+    defaultValues: { email: '' },
+  })
 
   const {
     control: controlConvidado,
     handleSubmit: handleSubmitConvidado,
     reset: resetConvidado,
-  } = useForm({ defaultValues: { nome: '', cargo: '' } })
+  } = useForm<AdicionarConvidadoData>({
+    resolver: zodResolver(adicionarConvidadoSchema),
+    defaultValues: { nome: '', cargo: '' },
+  })
 
   const carregarReuniao = useCallback(async () => {
     try {
@@ -138,7 +172,7 @@ export default function DetailsMeeting() {
     ])
   }
 
-  async function adicionarUsuario(data: { email: string }) {
+  async function adicionarUsuario(data: AdicionarUsuarioData) {
     try {
       const userRes = await usuarioService.getUserByEmail(data.email)
       try {
@@ -174,26 +208,11 @@ export default function DetailsMeeting() {
     ])
   }
 
-  async function salvarEdicaoGravacao(data: { nome: string; url: string }) {
-    if (!linkGravacaoEditId) return
-    try {
-      await linkReuniaoService.atualizarLink(linkGravacaoEditId, {
-        nome: data.nome,
-        url: data.url,
-      })
-      setModalGravaçãoVisible(false)
-      carregarReuniao()
-      showAlert('Link de gravação atualizado', 'success')
-    } catch (err) {
-      showAlert(extractApiErrorMessage(err), 'error')
-    }
-  }
-
-  async function criarLinkAdicional(data: { nome: string; url: string }) {
+  async function criarLinkAdicional(data: CriarLinkData) {
     try {
       await linkReuniaoService.criarLink(String(id), {
         tipo_link_id: 2,
-        nome: data.nome,
+        nome: data.nome || null,
         url: data.url,
       })
       setModalAddLinkVisible(false)
@@ -205,11 +224,11 @@ export default function DetailsMeeting() {
     }
   }
 
-  async function adicionarConvidado(data: { nome: string; cargo: string }) {
+  async function adicionarConvidado(data: AdicionarConvidadoData) {
     try {
       await convidadoReuniaoService.criarConvidado(String(id), {
         nome: data.nome,
-        cargo: data.cargo,
+        cargo: data.cargo || null,
       })
       setModalAddConvidadoVisible(false)
       resetConvidado()
@@ -220,9 +239,76 @@ export default function DetailsMeeting() {
     }
   }
 
+  function handleDeleteConvidado(convidadoId: number) {
+    Alert.alert('Remover Convidado', 'Deseja remover este convidado da reunião?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Remover',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await convidadoReuniaoService.excluirConvidado(convidadoId)
+            showAlert('Convidado removido com sucesso', 'success')
+            carregarReuniao()
+          } catch (err) {
+            showAlert(extractApiErrorMessage(err), 'error')
+          }
+        },
+      },
+    ])
+  }
+
+  async function salvarOuCriarGravacao(data: EditarGravacaoData) {
+    try {
+      if (linkGravacaoEditId) {
+        // Modo Edição
+        await linkReuniaoService.atualizarLink(linkGravacaoEditId, {
+          nome: data.nome || null,
+          url: data.url,
+        })
+        showAlert('Link de gravação atualizado', 'success')
+      } else {
+        // Modo Criação (tipo_link_id: 1 para gravação)
+        await linkReuniaoService.criarLink(String(id), {
+          tipo_link_id: 1,
+          nome: data.nome || null,
+          url: data.url,
+        })
+        showAlert('Link de gravação adicionado', 'success')
+      }
+      setModalGravacaoVisible(false)
+      resetGravacao()
+      carregarReuniao()
+    } catch (err) {
+      showAlert(extractApiErrorMessage(err), 'error')
+    }
+  }
+
+  async function salvarEdicaoConvidado(data: AdicionarConvidadoData) {
+    try {
+      if (!convidadoEditId) return
+
+      // Assumindo que você tem um método atualizarConvidado no seu service
+      await convidadoReuniaoService.atualizarConvidado(convidadoEditId, {
+        nome: data.nome,
+        cargo: data.cargo || null,
+      })
+
+      setModalEditarConvidadoVisible(false)
+      resetEditarConvidado({ nome: '', cargo: '' })
+      carregarReuniao()
+      showAlert('Convidado atualizado com sucesso', 'success')
+    } catch (err) {
+      showAlert(extractApiErrorMessage(err), 'error')
+    }
+  }
+
   if (loading) {
     return <Loading />
   }
+
+  // Identifica se já existe uma gravação para renderizar a UI adequadamente
+  const gravacaoExistente = detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao')
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -251,7 +337,6 @@ export default function DetailsMeeting() {
         </TouchableOpacity>
       </View>
 
-      {/* CONTEÚDO SCROLLÁVEL */}
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 32 }}>
         {/* CARD: GRAVAÇÃO DA REUNIÃO */}
         <View className="mt-4 w-full flex-col gap-3 rounded-2xl border border-cinza-300 p-4">
@@ -259,37 +344,50 @@ export default function DetailsMeeting() {
             <Text className="font-inter-semibold text-base text-cinza-600">
               Gravação da Reunião
             </Text>
+
             <TouchableOpacity
               className="p-1"
               onPress={() => {
-                const gravacao = detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao')
-                if (gravacao) {
-                  setLinkGravacaoEditId(gravacao.id)
-                  setValueGravacao('nome', gravacao.nome)
-                  setValueGravacao('url', gravacao.url)
-                  setModalGravaçãoVisible(true)
+                const gravacaoExistente = detalhesReuniao?.links?.find(
+                  (l) => l.tipo_link === 'reuniao',
+                )
+
+                if (gravacaoExistente) {
+                  setLinkGravacaoEditId(gravacaoExistente.id)
+                  setValueGravacao('nome', gravacaoExistente.nome || '')
+                  setValueGravacao('url', gravacaoExistente.url)
                 } else {
-                  showAlert('Nenhum link de gravação cadastrado para edição.', 'error')
+                  setLinkGravacaoEditId(null)
+                  resetGravacao({ nome: '', url: '' })
                 }
+                setModalGravacaoVisible(true)
               }}
             >
-              <PencilLine size={16} className="text-cinza-800" />
+              {detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao') ? (
+                <PencilLine size={16} className="text-cinza-800" />
+              ) : (
+                <Plus size={18} className="text-cinza-800" />
+              )}
             </TouchableOpacity>
           </View>
 
           <View className="flex-row items-center gap-3">
-            {detalhesReuniao?.links
-              ?.filter((link: any) => link.tipo_link === 'reuniao')
-              .map((link: any) => (
-                <TouchableOpacity
-                  key={link.id}
-                  activeOpacity={0.7}
-                  onPress={() => handleOpenLink(link.url)}
-                  className="rounded-xl bg-base px-4 py-2.5"
-                >
-                  <Text className="font-inter-medium text-sm text-white">Acessar Gravação</Text>
-                </TouchableOpacity>
-              ))}
+            {detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao') ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  const gravacao = detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao')
+                  if (gravacao) handleOpenLink(gravacao.url)
+                }}
+                className="rounded-xl bg-base px-4 py-2.5"
+              >
+                <Text className="font-inter-medium text-sm text-white">Acessar Gravação</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text className="font-inter-regular text-sm italic text-cinza-500">
+                Nenhuma gravação registrada.
+              </Text>
+            )}
 
             <TouchableOpacity
               activeOpacity={0.7}
@@ -387,7 +485,26 @@ export default function DetailsMeeting() {
                 <Text className="text-cinza-800 font-inter-medium text-sm">{convidado.nome}</Text>
               </View>
 
-              <Text className="font-inter-regular text-xs text-cinza-500">{convidado.cargo}</Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="font-inter-regular text-xs text-cinza-500">{convidado.cargo}</Text>
+                <TouchableOpacity
+                  className="p-1"
+                  onPress={() => {
+                    setConvidadoEditId(convidado.id)
+                    setValueEditarConvidado('nome', convidado.nome)
+                    setValueEditarConvidado('cargo', convidado.cargo || '')
+                    setModalEditarConvidadoVisible(true)
+                  }}
+                >
+                  <PencilLine size={16} className="text-cinza-600" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="p-1"
+                  onPress={() => handleDeleteConvidado(convidado.id)}
+                >
+                  <Trash2 size={16} className="text-red-500" />
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
 
@@ -403,17 +520,18 @@ export default function DetailsMeeting() {
 
       {/* ================= MODAIS ================= */}
 
-      <Modal visible={modalGravaçãoVisible} transparent animationType="fade">
+      <Modal visible={modalGravacaoVisible} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 p-4">
           <View className="w-full gap-3 rounded-2xl bg-white p-5">
-            <Text className="text-cinza-800 mb-2 font-inter-bold text-lg">Editar Gravação</Text>
+            <Text className="text-cinza-800 mb-2 font-inter-bold text-lg">
+              {linkGravacaoEditId ? 'Editar Gravação' : 'Adicionar Gravação'}
+            </Text>
 
             <LabelWithTextInput
               control={controlGravacao}
               name="nome"
               label="Nome da Gravação"
               placeholder="Ex: Reunião de Alinhamento"
-              rules={{ required: 'O nome é obrigatório' }}
             />
 
             <LabelWithTextInput
@@ -421,21 +539,21 @@ export default function DetailsMeeting() {
               name="url"
               label="URL"
               placeholder="https://..."
-              rules={{ required: 'A URL é obrigatória' }}
             />
 
             <View className="mt-2 flex-row justify-end gap-3">
               <TouchableOpacity
                 onPress={() => {
-                  setModalGravaçãoVisible(false)
-                  resetGravacao()
+                  setModalGravacaoVisible(false)
+                  resetGravacao({ nome: '', url: '' })
                 }}
                 className="rounded-xl bg-cinza-200 px-4 py-2"
               >
                 <Text className="font-inter-medium text-sm text-cinza-700">Cancelar</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
-                onPress={handleSubmitGravacao(salvarEdicaoGravacao)}
+                onPress={handleSubmitGravacao(salvarOuCriarGravacao)}
                 className="rounded-xl bg-base px-4 py-2"
               >
                 <Text className="font-inter-medium text-sm text-white">Salvar</Text>
@@ -455,7 +573,6 @@ export default function DetailsMeeting() {
               name="nome"
               label="Nome do Link"
               placeholder="Ex: Documento de Requisitos"
-              rules={{ required: 'O nome é obrigatório' }}
             />
 
             <LabelWithTextInput
@@ -463,7 +580,6 @@ export default function DetailsMeeting() {
               name="url"
               label="URL do link"
               placeholder="https://..."
-              rules={{ required: 'A URL é obrigatória' }}
             />
 
             <View className="mt-2 flex-row justify-end gap-3">
@@ -501,13 +617,6 @@ export default function DetailsMeeting() {
               placeholder="email@exemplo.com"
               keyboardType="email-address"
               autoCapitalize="none"
-              rules={{
-                required: 'O email é obrigatório',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Endereço de e-mail inválido',
-                },
-              }}
             />
 
             <View className="mt-2 flex-row justify-end gap-3">
@@ -541,7 +650,6 @@ export default function DetailsMeeting() {
               name="nome"
               label="Nome do Convidado"
               placeholder="Ex: João Silva"
-              rules={{ required: 'O nome é obrigatório' }}
             />
 
             <LabelWithTextInput
@@ -566,6 +674,46 @@ export default function DetailsMeeting() {
                 className="rounded-xl bg-base px-4 py-2"
               >
                 <Text className="font-inter-medium text-sm text-white">Adicionar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={modalEditarConvidadoVisible} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/50 p-4">
+          <View className="w-full gap-3 rounded-2xl bg-white p-5">
+            <Text className="text-cinza-800 mb-2 font-inter-bold text-lg">Editar Convidado</Text>
+
+            <LabelWithTextInput
+              control={controlEditarConvidado}
+              name="nome"
+              label="Nome do Convidado"
+              placeholder="Ex: João Silva"
+            />
+
+            <LabelWithTextInput
+              control={controlEditarConvidado}
+              name="cargo"
+              label="Cargo (Opcional)"
+              placeholder="Ex: Desenvolvedor"
+            />
+
+            <View className="mt-2 flex-row justify-end gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setModalEditarConvidadoVisible(false)
+                  resetEditarConvidado()
+                }}
+                className="rounded-xl bg-cinza-200 px-4 py-2"
+              >
+                <Text className="font-inter-medium text-sm text-cinza-700">Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmitEditarConvidado(salvarEdicaoConvidado)}
+                className="rounded-xl bg-base px-4 py-2"
+              >
+                <Text className="font-inter-medium text-sm text-white">Salvar</Text>
               </TouchableOpacity>
             </View>
           </View>
