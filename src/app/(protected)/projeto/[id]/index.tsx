@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
 import { ChevronDown, ChevronUp, FolderPlus, PenLine, Plus } from 'lucide-react-native'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -71,29 +71,31 @@ export default function ProjectDetails() {
     defaultValues: { titulo: '' },
   })
 
-  useEffect(() => {
-    async function carregarDadosIniciais() {
-      try {
-        const [dataProjeto, dataDoc, dataReg, dataMeeting] = await Promise.all([
-          projetoService.obterDetalhesDoProjetoPorId(id),
-          documentoService.obterCategoriasComDocumentoDeUmProjeto(id),
-          registroService.obterRegistrosDeUmProjeto(id),
-          reuniaoService.obterReunioesDeUmProjeto(id),
-        ])
+  useFocusEffect(
+    useCallback(() => {
+      async function carregarDadosIniciais() {
+        try {
+          const [dataProjeto, dataDoc, dataReg, dataMeeting] = await Promise.all([
+            projetoService.obterDetalhesDoProjetoPorId(id),
+            documentoService.obterCategoriasComDocumentoDeUmProjeto(id),
+            registroService.obterRegistrosDeUmProjeto(id),
+            reuniaoService.obterReunioesDeUmProjeto(id),
+          ])
 
-        setProject(dataProjeto)
-        setDocumentos(dataDoc)
-        setRegistros(dataReg)
-        setReunioes(dataMeeting)
-      } catch (error) {
-        showAlert(extractApiErrorMessage(error), 'error')
-      } finally {
-        setLoading(false)
+          setProject(dataProjeto)
+          setDocumentos(dataDoc)
+          setRegistros(dataReg)
+          setReunioes(dataMeeting)
+        } catch (error) {
+          showAlert(extractApiErrorMessage(error), 'error')
+        } finally {
+          setLoading(false)
+        }
       }
-    }
 
-    carregarDadosIniciais()
-  }, [id])
+      carregarDadosIniciais()
+    }, [id]),
+  )
 
   async function onSubmitCategoria(data: CategoriaData) {
     try {
