@@ -29,6 +29,7 @@ import * as reuniaoService from '@/services/escopo-api/reuniao'
 import * as usuarioService from '@/services/escopo-api/usuario'
 import * as usuarioReuniaoService from '@/services/escopo-api/usuario-reuniao'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
+import axios from 'axios'
 
 export default function DetailsMeeting() {
   const { id, nivelAcessoId } = useLocalSearchParams<{
@@ -116,6 +117,11 @@ export default function DetailsMeeting() {
       const data = await reuniaoService.obterDetalhesDeUmaReuniao(String(id))
       setDetalhesReuniao(data)
     } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        router.replace('/not-found')
+        return
+      }
+
       showAlert(extractApiErrorMessage(err), 'error')
     } finally {
       setLoading(false)

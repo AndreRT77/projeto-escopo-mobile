@@ -28,6 +28,7 @@ import * as projetoService from '@/services/escopo-api/projeto'
 import * as registroService from '@/services/escopo-api/registro'
 import * as reuniaoService from '@/services/escopo-api/reuniao'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
+import axios from 'axios'
 
 export default function ProjectDetails() {
   const router = useRouter()
@@ -86,8 +87,13 @@ export default function ProjectDetails() {
           setDocumentos(dataDoc)
           setRegistros(dataReg)
           setReunioes(dataMeeting)
-        } catch (error) {
-          showAlert(extractApiErrorMessage(error), 'error')
+        } catch (err) {
+          if (axios.isAxiosError(err) && err.response?.status === 404) {
+            router.replace('/not-found')
+            return
+          }
+
+          showAlert(extractApiErrorMessage(err), 'error')
         } finally {
           setLoading(false)
         }
