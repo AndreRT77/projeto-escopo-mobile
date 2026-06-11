@@ -1,32 +1,34 @@
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { ChevronsLeft, PencilLine, Trash2, Plus } from 'lucide-react-native'
+import { ChevronsLeft, PencilLine, Plus, Trash2 } from 'lucide-react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { Alert, Image, Linking, Modal, ScrollView, TouchableOpacity, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
 import USER_DEFAULT_IMAGE from '@/assets/images/icons/user-default.jpg'
+import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
-import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { useAlert } from '@/hooks/useAlert'
+import {
+  AdicionarConvidadoData,
+  AdicionarUsuarioData,
+  CriarLinkData,
+  EditarGravacaoData,
+  adicionarConvidadoSchema,
+  adicionarUsuarioSchema,
+  criarLinkSchema,
+  editarGravacaoSchema,
+  atualizarTituloReuniaoData,
+  atualizarTituloReuniaoSchema,
+} from '@/schemas/reuniao.schema'
 import * as convidadoReuniaoService from '@/services/escopo-api/convidado-reuniao'
 import * as linkReuniaoService from '@/services/escopo-api/link-reuniao'
 import * as reuniaoService from '@/services/escopo-api/reuniao'
 import * as usuarioService from '@/services/escopo-api/usuario'
 import * as usuarioReuniaoService from '@/services/escopo-api/usuario-reuniao'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
-import {
-  editarGravacaoSchema,
-  EditarGravacaoData,
-  criarLinkSchema,
-  CriarLinkData,
-  adicionarUsuarioSchema,
-  AdicionarUsuarioData,
-  adicionarConvidadoSchema,
-  AdicionarConvidadoData,
-} from '@/schemas/reuniao.schema'
 
 export default function DetailsMeeting() {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -41,11 +43,21 @@ export default function DetailsMeeting() {
   const [modalAddLinkVisible, setModalAddLinkVisible] = useState(false)
   const [modalAddUsuarioVisible, setModalAddUsuarioVisible] = useState(false)
   const [modalAddConvidadoVisible, setModalAddConvidadoVisible] = useState(false)
+  const [modalEditarConvidadoVisible, setModalEditarConvidadoVisible] = useState(false)
+
+  const [modalEditarTituloVisible, setModalEditarTituloVisible] = useState(false)
 
   const [linkGravacaoEditId, setLinkGravacaoEditId] = useState<number | null>(null)
-
-  const [modalEditarConvidadoVisible, setModalEditarConvidadoVisible] = useState(false)
   const [convidadoEditId, setConvidadoEditId] = useState<number | null>(null)
+
+  const {
+    control: controlTitulo,
+    handleSubmit: handleSubmitTitulo,
+    setValue: setValueTitulo,
+  } = useForm<atualizarTituloReuniaoData>({
+    resolver: zodResolver(atualizarTituloReuniaoSchema),
+    defaultValues: { titulo: '' },
+  })
 
   const {
     control: controlEditarConvidado,
@@ -288,7 +300,6 @@ export default function DetailsMeeting() {
     try {
       if (!convidadoEditId) return
 
-      // Assumindo que você tem um método atualizarConvidado no seu service
       await convidadoReuniaoService.atualizarConvidado(convidadoEditId, {
         nome: data.nome,
         cargo: data.cargo || null,
@@ -303,11 +314,21 @@ export default function DetailsMeeting() {
     }
   }
 
+  async function salvarEdicaoTitulo(data: atualizarTituloReuniaoData) {
+    try {
+      await reuniaoService.atualizarTitulo(id, data)
+      setModalEditarTituloVisible(false)
+      carregarReuniao()
+      showAlert('Título atualizado com sucesso', 'success')
+    } catch (err) {
+      showAlert(extractApiErrorMessage(err), 'error')
+    }
+  }
+
   if (loading) {
     return <Loading />
   }
 
-  // Identifica se já existe uma gravação para renderizar a UI adequadamente
   const gravacaoExistente = detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao')
 
   return (
@@ -319,9 +340,21 @@ export default function DetailsMeeting() {
           </TouchableOpacity>
 
           <View className="flex-1 flex-col">
-            <Text numberOfLines={1} className="text-cinza-800 font-inter-bold text-xl">
-              {detalhesReuniao?.titulo || 'Reunião'}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Text numberOfLines={1} className="text-cinza-800 shrink font-inter-bold text-xl">
+                {detalhesReuniao?.titulo || 'Reunião'}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setValueTitulo('titulo', detalhesReuniao?.titulo || '')
+                  setModalEditarTituloVisible(true)
+                }}
+                className="p-1"
+              >
+                <PencilLine size={16} className="text-cinza-500" />
+              </TouchableOpacity>
+            </View>
+
             <Text className="font-inter-regular text-xs text-cinza-500">
               Realizado em: {formatarData(detalhesReuniao?.criado_em)}
             </Text>
@@ -348,10 +381,6 @@ export default function DetailsMeeting() {
             <TouchableOpacity
               className="p-1"
               onPress={() => {
-                const gravacaoExistente = detalhesReuniao?.links?.find(
-                  (l) => l.tipo_link === 'reuniao',
-                )
-
                 if (gravacaoExistente) {
                   setLinkGravacaoEditId(gravacaoExistente.id)
                   setValueGravacao('nome', gravacaoExistente.nome || '')
@@ -363,7 +392,7 @@ export default function DetailsMeeting() {
                 setModalGravacaoVisible(true)
               }}
             >
-              {detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao') ? (
+              {gravacaoExistente ? (
                 <PencilLine size={16} className="text-cinza-800" />
               ) : (
                 <Plus size={18} className="text-cinza-800" />
@@ -372,13 +401,10 @@ export default function DetailsMeeting() {
           </View>
 
           <View className="flex-row items-center gap-3">
-            {detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao') ? (
+            {gravacaoExistente ? (
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => {
-                  const gravacao = detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao')
-                  if (gravacao) handleOpenLink(gravacao.url)
-                }}
+                onPress={() => handleOpenLink(gravacaoExistente.url)}
                 className="rounded-xl bg-base px-4 py-2.5"
               >
                 <Text className="font-inter-medium text-sm text-white">Acessar Gravação</Text>
@@ -519,6 +545,39 @@ export default function DetailsMeeting() {
       </ScrollView>
 
       {/* ================= MODAIS ================= */}
+
+      <Modal visible={modalEditarTituloVisible} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/50 p-4">
+          <View className="w-full gap-3 rounded-2xl bg-white p-5">
+            <Text className="text-cinza-800 mb-2 font-inter-bold text-lg">Editar Título</Text>
+
+            <LabelWithTextInput
+              control={controlTitulo}
+              name="titulo"
+              label="Nome da Reunião"
+              placeholder="Ex: Alinhamento Semanal"
+            />
+
+            <View className="mt-2 flex-row justify-end gap-3">
+              <TouchableOpacity
+                onPress={() => {
+                  setModalEditarTituloVisible(false)
+                  setValueTitulo('titulo', detalhesReuniao?.titulo || '')
+                }}
+                className="rounded-xl bg-cinza-200 px-4 py-2"
+              >
+                <Text className="font-inter-medium text-sm text-cinza-700">Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSubmitTitulo(salvarEdicaoTitulo)}
+                className="rounded-xl bg-base px-4 py-2"
+              >
+                <Text className="font-inter-medium text-sm text-white">Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={modalGravacaoVisible} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 p-4">

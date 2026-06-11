@@ -39,3 +39,11 @@ export const adicionarConvidadoSchema = z.object({
   cargo: z.string().max(100, { message: 'Máximo 100 caracteres' }).optional().or(z.literal('')),
 })
 export type AdicionarConvidadoData = z.infer<typeof adicionarConvidadoSchema>
+
+export const atualizarTituloReuniaoSchema = z.object({
+  titulo: z
+    .string({ error: 'Deve ser uma String' })
+    .min(1, { error: 'Mínimo 1 caractere' })
+    .max(150, { error: 'Máximo 150 caracteres' }),
+})
+export type atualizarTituloReuniaoData = z.infer<typeof atualizarTituloReuniaoSchema>
