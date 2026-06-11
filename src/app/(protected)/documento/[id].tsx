@@ -18,6 +18,7 @@ import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { useAlert } from '@/hooks/useAlert'
 import * as documentoService from '@/services/escopo-api/documento'
+import * as projetoService from '@/services/escopo-api/projeto'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 const PURPLE = '#552BA9'
@@ -51,6 +52,10 @@ function pegarCampoDocumento(
   return fallback
 }
 
+function podeAlterar(nivelAcessoId: number | null, projetoIdentificado: boolean) {
+  return !projetoIdentificado || nivelAcessoId === 1 || nivelAcessoId === 2
+}
+
 export default function Documento() {
   const router = useRouter()
   const params = useLocalSearchParams()
@@ -72,12 +77,19 @@ export default function Documento() {
 
   const [titulo, setTitulo] = useState('')
   const [conteudo, setConteudo] = useState('')
+  const [nivelAcessoId, setNivelAcessoId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
+  const [editingTitle, setEditingTitle] = useState(false)
   const [editingContent, setEditingContent] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
+  const projetoId = useMemo(
+    () => pegarCampoDocumento(documento, ['projeto_id', 'projetoId'], projetoIdParam),
+    [documento, projetoIdParam],
+  )
+  const podeAlterarDocumento = podeAlterar(nivelAcessoId, Boolean(projetoId))
 
   useEffect(() => {
     async function loadDocumento() {
@@ -107,6 +119,43 @@ export default function Documento() {
     loadDocumento()
   }, [documentoId, showAlert])
 
+  useEffect(() => {
+    let ativo = true
+
+    async function carregarNivelAcesso() {
+      if (!projetoId) {
+        setNivelAcessoId(null)
+        return
+      }
+
+      try {
+        const projeto = await projetoService.obterDetalhesDoProjetoPorId(projetoId)
+        const nivel = Number(projeto?.nivel_acesso_id)
+
+        if (ativo) {
+          setNivelAcessoId(Number.isFinite(nivel) ? nivel : null)
+        }
+      } catch {
+        if (ativo) {
+          setNivelAcessoId(null)
+        }
+      }
+    }
+
+    carregarNivelAcesso()
+
+    return () => {
+      ativo = false
+    }
+  }, [projetoId])
+
+  useEffect(() => {
+    if (podeAlterarDocumento) return
+
+    setEditingTitle(false)
+    setEditingContent(false)
+  }, [podeAlterarDocumento])
+
   async function refreshDocumento() {
     if (!documentoId) return
 
@@ -123,6 +172,11 @@ export default function Documento() {
 
   async function handleSave() {
     if (!documentoId || !documento) return
+
+    if (!podeAlterarDocumento) {
+      showAlert('Seu nível de acesso não permite alterar este documento.', 'error')
+      return
+    }
 
     const trimmedTitle = titulo.trim()
     const titleChanged = trimmedTitle !== documento.titulo
@@ -201,13 +255,19 @@ export default function Documento() {
     )
   }
 
-  const projetoId = pegarCampoDocumento(documento, ['projeto_id', 'projetoId'], projetoIdParam)
   const createdAt =
     versoes.length > 0
       ? [...versoes].sort(
           (a, b) => new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime(),
         )[0]?.criado_em
       : undefined
+  const updatedAt =
+    documento.ultima_alteracao ||
+    (versoes.length > 0
+      ? [...versoes].sort(
+          (a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime(),
+        )[0]?.criado_em
+      : undefined)
   const hasChanges = titulo.trim() !== documento.titulo || conteudo !== (documento.conteudo || '')
 
   if (commentsOpen) {
@@ -239,18 +299,33 @@ export default function Documento() {
                 <ChevronsLeft size={34} color="#111827" strokeWidth={2.5} />
               </TouchableOpacity>
 
-              <TextInput
-                value={titulo}
-                onChangeText={setTitulo}
-                className="max-w-[310px] flex-1 rounded border border-transparent px-1 py-0 font-inter-bold text-2xl text-black"
-                selectionColor={PURPLE}
-              />
+              {editingTitle ? (
+                <TextInput
+                  value={titulo}
+                  onChangeText={setTitulo}
+                  onBlur={() => setEditingTitle(false)}
+                  editable={podeAlterarDocumento && !saving}
+                  autoFocus
+                  numberOfLines={1}
+                  className="min-w-0 flex-1 rounded border border-cinza-600 px-2 py-0 font-inter-bold text-2xl text-black"
+                  selectionColor={PURPLE}
+                />
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={!podeAlterarDocumento || saving}
+                  onPress={() => setEditingTitle(true)}
+                  className="min-w-0 flex-1"
+                >
+                  <Text className="font-inter-bold text-2xl text-black" numberOfLines={1}>
+                    {titulo}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <Text className={`text-sm ${hasChanges ? 'text-alert' : 'text-variant'}`}>
-              {hasChanges
-                ? 'Alterações não salvas!'
-                : `Última Alteração: ${formatDate(documento.ultima_alteracao)}`}
+              {hasChanges ? 'Alterações não salvas!' : `Última Alteração: ${formatDate(updatedAt)}`}
             </Text>
             <Text className="text-sm text-black">
               Data de criação: {formatDate(documento.criado_em || createdAt)}
@@ -287,6 +362,8 @@ export default function Documento() {
                 onChangeText={setConteudo}
                 multiline
                 textAlignVertical="top"
+                editable={podeAlterarDocumento}
+                onBlur={() => setEditingContent(false)}
                 selectionColor={PURPLE}
                 placeholder="Este documento ainda não possui conteúdo."
                 placeholderTextColor="#6B7280"
@@ -295,7 +372,9 @@ export default function Documento() {
             ) : (
               <TouchableOpacity
                 activeOpacity={1}
-                onPress={() => setEditingContent(true)}
+                onPress={() => {
+                  if (podeAlterarDocumento) setEditingContent(true)
+                }}
                 className="flex-1"
               >
                 <ScrollView
@@ -310,7 +389,7 @@ export default function Documento() {
               </TouchableOpacity>
             )}
 
-            {hasChanges && (
+            {podeAlterarDocumento && hasChanges && (
               <TouchableOpacity
                 onPress={handleSave}
                 disabled={saving}
