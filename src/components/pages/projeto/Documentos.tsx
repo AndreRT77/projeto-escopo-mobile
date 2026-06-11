@@ -62,7 +62,11 @@ export default function Documentos({
                   className="flex-row items-center justify-between border-b border-cinza-100 py-3 last:border-0"
                 >
                   <View className="flex-1 pr-4">
-                    <Text className="font-inter-bold text-base text-cinza-700" numberOfLines={1}>
+                    <Text
+                      className="font-inter-bold text-base text-cinza-700"
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
                       {subdoc.titulo}
                     </Text>
                     <Text className="text-xs text-cinza-400">

@@ -13,8 +13,8 @@ import {
   View,
 } from 'react-native'
 
+import USER_DEFAULT_IMAGE from '@/assets/images/icons/user-default.jpg'
 import { Text } from '@/components/ui/Text'
-import { ENV } from '@/constants/env'
 import { STORAGE_KEYS } from '@/constants/storage'
 import type { Comentario } from '@/services/escopo-api/comentario'
 import * as comentarioService from '@/services/escopo-api/comentario'
@@ -22,6 +22,7 @@ import * as projetoService from '@/services/escopo-api/projeto'
 import * as registroService from '@/services/escopo-api/registro'
 import * as userService from '@/services/escopo-api/usuario'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
+import { getPhoto, initials } from '@/utils/getPhoto'
 
 type Props = {
   documentoId: string | number
@@ -30,8 +31,8 @@ type Props = {
   onErro?: (mensagem: string) => void
 }
 
-type Usuario = { id: string | number | null; nome: string; nivel: string; foto: string }
-type Perfil = { nivel: string; foto: string }
+type Usuario = { id: string | number | null; nome: string; nivel: string; foto: string | number }
+type Perfil = { nivel: string; foto: string | number }
 type Ref = {
   autor: string
   nivel: string
@@ -44,7 +45,7 @@ type Item = {
   tipo: number
   nome: string
   nivel: string
-  foto: string
+  foto: string | number
   avatar: string
   texto: string
   data: string
@@ -102,34 +103,7 @@ function numero(valor: any) {
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
-function foto(valor: any) {
-  const raw =
-    typeof valor === 'object' && valor
-      ? texto(
-          get(
-            valor,
-            ['url', 'uri', 'src', 'path', 'foto_perfil', 'fotoPerfil', 'foto', 'avatar', 'base64'],
-            '',
-          ),
-        )
-      : texto(valor)
-  const v = raw.trim()
-  if (!v) return ''
-  if (/^(https?:|file:|data:image\/)/i.test(v)) return v
-  if (v.startsWith('/')) return `${ENV.API_URL.replace(/\/$/, '')}${v}`
-  if (/^[A-Za-z0-9+/=]{80,}$/.test(v)) return `data:image/jpeg;base64,${v}`
-  return `${ENV.API_URL.replace(/\/$/, '')}/${v.replace(/^\.?\//, '')}`
-}
-
-function iniciais(nome: string) {
-  return String(nome || 'U')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0])
-    .join('')
-    .toUpperCase()
-}
+// photo and initials helpers moved to src/utils/getPhoto.ts
 
 function dataHora(data?: string) {
   const d = data ? new Date(data) : null
@@ -161,10 +135,10 @@ async function usuarioAtual(): Promise<Usuario> {
       id: get(u, ['id', 'usuario_id', 'usuarioId'], null),
       nome: get(u, ['nome', 'name', 'email'], 'Usuário'),
       nivel: texto(get(u, perfilCampos, '')),
-      foto: foto(get(u, ['foto_perfil', 'fotoPerfil', 'foto', 'avatar'], '')),
+      foto: getPhoto(get(u, ['foto_perfil', 'fotoPerfil', 'foto', 'avatar'], '')),
     }
   } catch {
-    return { id: null, nome: 'Usuário', nivel: '', foto: '' }
+    return { id: null, nome: 'Usuário', nivel: '', foto: USER_DEFAULT_IMAGE }
   }
 }
 
@@ -175,7 +149,7 @@ async function perfisProjeto(projetoId?: string | number | null) {
   try {
     const { participantes = [] } = await projetoService.obterParticipantesDeUmProjeto(id)
     participantes.forEach((p) => {
-      mapa.set(String(p.usuario_id), { nivel: p.nivel_acesso || '', foto: foto(p.foto_perfil) })
+      mapa.set(String(p.usuario_id), { nivel: p.nivel_acesso || '', foto: getPhoto(p.foto_perfil) })
     })
   } catch {}
   return mapa
@@ -260,7 +234,7 @@ function autor(c: any) {
         get(u, perfilCampos, ''),
       ),
     ),
-    foto: foto(
+    foto: getPhoto(
       get(
         c,
         [
@@ -411,7 +385,7 @@ async function preparar(raw: Comentario[], user: Usuario, perfis: Map<string, Pe
       nome: a.nome,
       nivel: a.nivel || perfil?.nivel || (me ? user.nivel : '') || (tipo === 3 ? 'Registro' : ''),
       foto: (me ? user.foto : '') || a.foto || perfil?.foto || '',
-      avatar: iniciais(a.nome),
+      avatar: initials(a.nome),
       texto: texto(get(c, ['conteudo', 'texto', 'comentario', 'mensagem'], '')),
       parentId: pid,
       registroId: rid,
@@ -467,6 +441,42 @@ async function preparar(raw: Comentario[], user: Usuario, perfis: Map<string, Pe
       } catch {}
     }),
   )
+
+  // Preencher fotos faltantes buscando pelos e-mails dos autores quando possível
+  try {
+    const emailsToFetch = new Set<string>()
+    base.forEach((item) => {
+      if (!item.foto) {
+        const original = porId.get(String(item.id))
+        const email = original ? autorEmail(original) : null
+        if (email) emailsToFetch.add(email)
+      }
+    })
+
+    if (emailsToFetch.size > 0) {
+      const results = await Promise.all(
+        Array.from(emailsToFetch).map(async (email) => {
+          try {
+            const u = await userService.getUserByEmail(email)
+            return [email, getPhoto(u.foto_perfil || '')]
+          } catch {
+            return [email, '']
+          }
+        }),
+      )
+      const emailFoto = new Map(results as [string, string][])
+      base.forEach((item) => {
+        if (!item.foto) {
+          const original = porId.get(String(item.id))
+          const email = original ? autorEmail(original) : null
+          if (email) {
+            const f = emailFoto.get(email)
+            if (f) item.foto = f
+          }
+        }
+      })
+    }
+  } catch {}
   return comRespostas
     .map((c) =>
       c.referencia && c.registroId
@@ -483,14 +493,25 @@ async function preparar(raw: Comentario[], user: Usuario, perfis: Map<string, Pe
     .sort((a, b) => a.ordem - b.ordem || Number(a.id) - Number(b.id))
 }
 
+function autorEmail(c: any) {
+  const u = obj(c, ['usuario', 'criador', 'autor', 'user'])
+  const possible = ['email', 'e_mail', 'usuario_email', 'autor_email', 'criador_email']
+  for (const p of possible) {
+    const v = get(c, [p], null) || get(u, [p], null)
+    if (v) return String(v)
+  }
+  return null
+}
+
 function Avatar({ item }: { item: Pick<Item, 'avatar' | 'foto'> }) {
+  const source =
+    typeof item.foto === 'string' && item.foto
+      ? { uri: item.foto }
+      : item.foto || USER_DEFAULT_IMAGE
+
   return (
     <View className="h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-base bg-cinza-200">
-      {item.foto ? (
-        <Image source={{ uri: item.foto }} className="h-full w-full" resizeMode="cover" />
-      ) : (
-        <Text className="font-inter-semibold text-base">{item.avatar}</Text>
-      )}
+      <Image source={source} className="h-full w-full" resizeMode="cover" />
     </View>
   )
 }
@@ -594,7 +615,7 @@ export default function Comentarios({ documentoId, projetoId, onVoltar, onErro }
   const [erro, setErro] = useState('')
   const [textoInput, setTextoInput] = useState('')
   const [resposta, setResposta] = useState<Item | null>(null)
-  const avatar = useMemo(() => ({ avatar: iniciais(user.nome), foto: user.foto }), [user])
+  const avatar = useMemo(() => ({ avatar: initials(user.nome), foto: user.foto }), [user])
 
   const carregar = useCallback(
     async (u: Usuario) => {

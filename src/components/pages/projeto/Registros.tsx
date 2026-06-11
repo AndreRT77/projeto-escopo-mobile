@@ -89,6 +89,7 @@ export default function Registros({
                             <Text
                               className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
                               numberOfLines={1}
+                              ellipsizeMode="tail"
                             >
                               {reg.titulo}
                             </Text>

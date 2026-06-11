@@ -307,7 +307,7 @@ export default function Documento() {
                   editable={podeAlterarDocumento && !saving}
                   autoFocus
                   numberOfLines={1}
-                  className="min-w-0 flex-1 rounded border border-cinza-600 px-2 py-0 font-inter-bold text-2xl text-black"
+                  className="min-w-0 flex-1 rounded border-2 border-purple-700 px-2 py-0 font-inter-bold text-2xl text-black"
                   selectionColor={PURPLE}
                 />
               ) : (
@@ -317,7 +317,11 @@ export default function Documento() {
                   onPress={() => setEditingTitle(true)}
                   className="min-w-0 flex-1"
                 >
-                  <Text className="font-inter-bold text-2xl text-black" numberOfLines={1}>
+                  <Text
+                    className="font-inter-bold text-2xl text-black"
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
                     {titulo}
                   </Text>
                 </TouchableOpacity>
