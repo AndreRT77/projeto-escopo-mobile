@@ -11,6 +11,7 @@ interface ReunioesProps {
   formatReunioes: GroupedData<reuniaoService.Reuniao>
   expandReuniao: Record<string, boolean>
   setExpandReuniao: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  nivelAcessoId: number
 }
 
 const ORDEM_MESES = [
@@ -32,6 +33,7 @@ export default function Reunioes({
   formatReunioes,
   expandReuniao,
   setExpandReuniao,
+  nivelAcessoId,
 }: ReunioesProps) {
   const router = useRouter()
 
@@ -73,7 +75,12 @@ export default function Reunioes({
                       reunioes.map((reuniao) => (
                         <TouchableOpacity
                           key={reuniao.id}
-                          onPress={() => router.push(`/reuniao/${reuniao.id}`)}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/reuniao/[id]',
+                              params: { id: reuniao.id, nivelAcessoId },
+                            })
+                          }
                           className="mb-3 flex-row items-center justify-between rounded-2xl border border-cinza-300 bg-white p-4"
                         >
                           <View className="mr-2 flex-1">

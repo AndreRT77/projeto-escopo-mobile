@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronDown, ChevronUp, FolderPlus, PenLine, Plus } from 'lucide-react-native'
 import React, { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -346,6 +346,7 @@ export default function ProjectDetails() {
               expandReuniao={expandReuniao}
               setExpandReuniao={setExpandReuniao}
               formatReunioes={formatReunioes}
+              nivelAcessoId={project?.nivel_acesso_id || 0}
             />
           </View>
         )}

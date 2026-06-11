@@ -18,10 +18,10 @@ import {
   EditarGravacaoData,
   adicionarConvidadoSchema,
   adicionarUsuarioSchema,
-  criarLinkSchema,
-  editarGravacaoSchema,
   atualizarTituloReuniaoData,
   atualizarTituloReuniaoSchema,
+  criarLinkSchema,
+  editarGravacaoSchema,
 } from '@/schemas/reuniao.schema'
 import * as convidadoReuniaoService from '@/services/escopo-api/convidado-reuniao'
 import * as linkReuniaoService from '@/services/escopo-api/link-reuniao'
@@ -31,9 +31,14 @@ import * as usuarioReuniaoService from '@/services/escopo-api/usuario-reuniao'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
 
 export default function DetailsMeeting() {
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, nivelAcessoId } = useLocalSearchParams<{
+    id: string
+    nivelAcessoId: string
+  }>()
   const router = useRouter()
   const { showAlert } = useAlert()
+
+  const canEdit = Number(nivelAcessoId) === 1 || Number(nivelAcessoId) === 2
 
   const [detalhesReuniao, setDetalhesReuniao] = useState<reuniaoService.DetalhesReuniao>()
   const [loading, setLoading] = useState(true)
@@ -344,15 +349,17 @@ export default function DetailsMeeting() {
               <Text numberOfLines={1} className="text-cinza-800 shrink font-inter-bold text-xl">
                 {detalhesReuniao?.titulo || 'Reunião'}
               </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setValueTitulo('titulo', detalhesReuniao?.titulo || '')
-                  setModalEditarTituloVisible(true)
-                }}
-                className="p-1"
-              >
-                <PencilLine size={16} className="text-cinza-500" />
-              </TouchableOpacity>
+              {canEdit && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setValueTitulo('titulo', detalhesReuniao?.titulo || '')
+                    setModalEditarTituloVisible(true)
+                  }}
+                  className="p-1"
+                >
+                  <PencilLine size={16} className="text-cinza-500" />
+                </TouchableOpacity>
+              )}
             </View>
 
             <Text className="font-inter-regular text-xs text-cinza-500">
@@ -361,13 +368,15 @@ export default function DetailsMeeting() {
           </View>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          className="h-10 w-10 items-center justify-center rounded-xl bg-base"
-          onPress={handleDeleteReuniao}
-        >
-          <Trash2 size={20} color={'white'} />
-        </TouchableOpacity>
+        {canEdit && (
+          <TouchableOpacity
+            activeOpacity={0.7}
+            className="h-10 w-10 items-center justify-center rounded-xl bg-base"
+            onPress={handleDeleteReuniao}
+          >
+            <Trash2 size={20} color={'white'} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 32 }}>
@@ -378,26 +387,28 @@ export default function DetailsMeeting() {
               Gravação da Reunião
             </Text>
 
-            <TouchableOpacity
-              className="p-1"
-              onPress={() => {
-                if (gravacaoExistente) {
-                  setLinkGravacaoEditId(gravacaoExistente.id)
-                  setValueGravacao('nome', gravacaoExistente.nome || '')
-                  setValueGravacao('url', gravacaoExistente.url)
-                } else {
-                  setLinkGravacaoEditId(null)
-                  resetGravacao({ nome: '', url: '' })
-                }
-                setModalGravacaoVisible(true)
-              }}
-            >
-              {gravacaoExistente ? (
-                <PencilLine size={16} className="text-cinza-800" />
-              ) : (
-                <Plus size={18} className="text-cinza-800" />
-              )}
-            </TouchableOpacity>
+            {canEdit && (
+              <TouchableOpacity
+                className="p-1"
+                onPress={() => {
+                  if (gravacaoExistente) {
+                    setLinkGravacaoEditId(gravacaoExistente.id)
+                    setValueGravacao('nome', gravacaoExistente.nome || '')
+                    setValueGravacao('url', gravacaoExistente.url)
+                  } else {
+                    setLinkGravacaoEditId(null)
+                    resetGravacao({ nome: '', url: '' })
+                  }
+                  setModalGravacaoVisible(true)
+                }}
+              >
+                {gravacaoExistente ? (
+                  <PencilLine size={16} className="text-cinza-800" />
+                ) : (
+                  <Plus size={18} className="text-cinza-800" />
+                )}
+              </TouchableOpacity>
+            )}
           </View>
 
           <View className="flex-row items-center gap-3">
@@ -443,19 +454,23 @@ export default function DetailsMeeting() {
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity className="p-1" onPress={() => handleDeleteLink(link.id)}>
-                  <Trash2 size={16} className="text-red-500" />
-                </TouchableOpacity>
+                {canEdit && (
+                  <TouchableOpacity className="p-1" onPress={() => handleDeleteLink(link.id)}>
+                    <Trash2 size={16} className="text-red-500" />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            className="mt-3 w-full items-center justify-center rounded-xl border border-dashed border-purple-400 py-2.5"
-            onPress={() => setModalAddLinkVisible(true)}
-          >
-            <Text className="font-inter-medium text-sm text-purple-600">+ Adicionar link</Text>
-          </TouchableOpacity>
+          {canEdit && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="mt-3 w-full items-center justify-center rounded-xl border border-dashed border-purple-400 py-2.5"
+              onPress={() => setModalAddLinkVisible(true)}
+            >
+              <Text className="font-inter-medium text-sm text-purple-600">+ Adicionar link</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* CARD: PARTICIPANTES */}
@@ -477,20 +492,24 @@ export default function DetailsMeeting() {
 
               <View className="flex-row items-center gap-2">
                 <Text className="font-inter-regular text-xs text-cinza-500">{usuario.cargo}</Text>
-                <TouchableOpacity className="p-1" onPress={() => handleDeleteUsuario(usuario.id)}>
-                  <Trash2 size={16} className="text-red-500" />
-                </TouchableOpacity>
+                {canEdit && (
+                  <TouchableOpacity className="p-1" onPress={() => handleDeleteUsuario(usuario.id)}>
+                    <Trash2 size={16} className="text-red-500" />
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           ))}
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            className="bg-cinza-50 mt-3 w-full items-center justify-center rounded-xl border border-cinza-200 py-2.5"
-            onPress={() => setModalAddUsuarioVisible(true)}
-          >
-            <Text className="font-inter-medium text-sm text-cinza-700">Novo Participante</Text>
-          </TouchableOpacity>
+          {canEdit && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="bg-cinza-50 mt-3 w-full items-center justify-center rounded-xl border border-cinza-200 py-2.5"
+              onPress={() => setModalAddUsuarioVisible(true)}
+            >
+              <Text className="font-inter-medium text-sm text-cinza-700">Novo Participante</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* CARD: CONVIDADOS */}
@@ -513,34 +532,40 @@ export default function DetailsMeeting() {
 
               <View className="flex-row items-center gap-2">
                 <Text className="font-inter-regular text-xs text-cinza-500">{convidado.cargo}</Text>
-                <TouchableOpacity
-                  className="p-1"
-                  onPress={() => {
-                    setConvidadoEditId(convidado.id)
-                    setValueEditarConvidado('nome', convidado.nome)
-                    setValueEditarConvidado('cargo', convidado.cargo || '')
-                    setModalEditarConvidadoVisible(true)
-                  }}
-                >
-                  <PencilLine size={16} className="text-cinza-600" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className="p-1"
-                  onPress={() => handleDeleteConvidado(convidado.id)}
-                >
-                  <Trash2 size={16} className="text-red-500" />
-                </TouchableOpacity>
+                {canEdit && (
+                  <>
+                    <TouchableOpacity
+                      className="p-1"
+                      onPress={() => {
+                        setConvidadoEditId(convidado.id)
+                        setValueEditarConvidado('nome', convidado.nome)
+                        setValueEditarConvidado('cargo', convidado.cargo || '')
+                        setModalEditarConvidadoVisible(true)
+                      }}
+                    >
+                      <PencilLine size={16} className="text-cinza-600" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      className="p-1"
+                      onPress={() => handleDeleteConvidado(convidado.id)}
+                    >
+                      <Trash2 size={16} className="text-red-500" />
+                    </TouchableOpacity>
+                  </>
+                )}
               </View>
             </View>
           ))}
 
-          <TouchableOpacity
-            activeOpacity={0.7}
-            className="bg-cinza-50 mt-3 w-full items-center justify-center rounded-xl border border-cinza-200 py-2.5"
-            onPress={() => setModalAddConvidadoVisible(true)}
-          >
-            <Text className="font-inter-medium text-sm text-cinza-700">Novo Convidado</Text>
-          </TouchableOpacity>
+          {canEdit && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="bg-cinza-50 mt-3 w-full items-center justify-center rounded-xl border border-cinza-200 py-2.5"
+              onPress={() => setModalAddConvidadoVisible(true)}
+            >
+              <Text className="font-inter-medium text-sm text-cinza-700">Novo Convidado</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
