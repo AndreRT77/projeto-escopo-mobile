@@ -12,8 +12,10 @@ export async function criarUsuario(
   return response.data
 }
 
-export async function excluirUsuario(usuarioId: number | string) {
-  const response = await api.delete(`${ENV.API_URL}/api/v1/reuniao/usuario/${usuarioId}`)
+export async function excluirUsuario(usuarioId: number | string, reuniaoId: number | string) {
+  const response = await api.delete(
+    `${ENV.API_URL}/api/v1/reuniao/${reuniaoId}/usuario/${usuarioId}`,
+  )
 
   return response.data
 }
