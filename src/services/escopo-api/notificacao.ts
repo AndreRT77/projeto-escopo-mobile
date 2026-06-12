@@ -8,6 +8,9 @@ export interface Notificacao {
   aberto: number
   comentario_id: number
   documento_id: number
+  documento_titulo: string
+  projeto_id: number
+  projeto_titulo: string
 }
 
 export async function obterNotificacoes(): Promise<Notificacao[]> {

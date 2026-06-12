@@ -3,6 +3,7 @@ import { router } from 'expo-router'
 import { createContext, PropsWithChildren, useEffect, useState } from 'react'
 
 import { STORAGE_KEYS } from '@/constants/storage'
+import { api } from '@/services/api'
 
 type AuthState = {
   isLoggedIn: boolean
@@ -55,6 +56,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
 
     loadStorageState()
+  }, [])
+
+  useEffect(() => {
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          logout()
+        }
+
+        return Promise.reject(error)
+      },
+    )
+
+    return () => {
+      api.interceptors.response.eject(interceptor)
+    }
   }, [])
 
   return (

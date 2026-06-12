@@ -113,7 +113,6 @@ export default function Configuracao() {
         const usuarioString = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_USER)
 
         if (!usuarioString) {
-          // Trate aqui caso o usuário não seja encontrado (ex: redirecionar para o login)
           showAlert('Usuário não encontrado. Por favor, faça login novamente.', 'error')
           setLoadingUserData(false)
           logout()

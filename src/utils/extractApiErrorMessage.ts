@@ -1,5 +1,6 @@
-import { DefaultBodyError } from '@/services/escopo-api/interfaces/errors'
 import axios from 'axios'
+
+import { DefaultBodyError } from '@/services/escopo-api/interfaces/errors'
 
 export function extractApiErrorMessage(error: unknown): string {
   if (!axios.isAxiosError(error)) {
@@ -8,6 +9,10 @@ export function extractApiErrorMessage(error: unknown): string {
     }
 
     return 'Um erro inesperado aconteceu.'
+  }
+
+  if (error.response?.status === 401) {
+    return 'Sessão expirada, faça login novamente.'
   }
 
   if (error.response?.status === 422) {

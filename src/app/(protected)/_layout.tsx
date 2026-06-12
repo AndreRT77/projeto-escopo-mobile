@@ -1,51 +1,55 @@
 import { Redirect, Stack, router, usePathname } from 'expo-router'
-import { ActivityIndicator, Image, Text, TouchableOpacity, View } from 'react-native'
+import { Bell, LayoutDashboard, List, Settings } from 'lucide-react-native'
+import { Image, Text, TouchableOpacity, View } from 'react-native'
 
 import LogoImg from '@/assets/images/logo-white.png'
+import { Loading } from '@/components/ui/Loading'
 import { useAuth } from '@/hooks/useAuth'
-import { Menu, X } from 'lucide-react-native'
-import { useState } from 'react'
 
 export default function ProtectedLayout() {
   const { isLoggedIn, isReady } = useAuth()
-  const [menuOpen, setMenuOpen] = useState(false)
   const currentPath = usePathname()
 
-  const itensMenu = [
-    { id: 1, nome: 'Dashboard', path: '/' },
-    { id: 2, nome: 'Novo Projeto', path: '/novo-projeto' },
-    { id: 3, nome: 'Lista de projetos', path: '/projetos' },
-    { id: 4, nome: 'Notificações', path: '/notificacoes' },
-    { id: 5, nome: 'Configurações', path: '/configuracao' },
-  ]
-
   if (!isReady) {
-    return <ActivityIndicator className="grow items-center justify-center" />
+    return <Loading />
   }
 
   if (!isLoggedIn) {
     return <Redirect href="/login" />
   }
 
-  const handleNavigate = (path: string) => {
-    setMenuOpen(false)
-    if (path === currentPath) {
-      return
+  function handleNavigate(path: string) {
+    if (router.canGoBack()) {
+      router.dismissAll()
     }
 
-    router.replace(path as any)
+    router.push(path)
   }
 
   return (
     <View className="flex-1">
       <Stack
         screenOptions={{
-          header: () => (
-            <View className="h-10 flex-row items-center justify-between bg-[#552BA9] px-4">
-              <Image source={LogoImg} resizeMode="contain" className="h-8 w-40" />
+          title: '',
+          headerStyle: {
+            backgroundColor: '#552BA9',
+          },
+          headerShadowVisible: false,
+          headerLeft: () => <Image source={LogoImg} resizeMode="contain" className="h-12 w-44" />,
+          headerRight: () => (
+            <View className="flex-row items-center gap-7">
+              <TouchableOpacity
+                onPress={() => handleNavigate('/notificacoes')}
+                className="active:opacity-70"
+              >
+                <Bell color="white" size={24} strokeWidth={1.5} />
+              </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => setMenuOpen(!menuOpen)}>
-                {menuOpen ? <X color="white" size={28} /> : <Menu color="white" size={28} />}
+              <TouchableOpacity
+                onPress={() => handleNavigate('/configuracao')}
+                className="active:opacity-70"
+              >
+                <Settings color="white" size={24} strokeWidth={1.5} />
               </TouchableOpacity>
             </View>
           ),
@@ -53,19 +57,32 @@ export default function ProtectedLayout() {
         }}
       />
 
-      {menuOpen && (
-        <View className="absolute bottom-0 left-0 right-0 top-10 z-50 flex flex-col items-center justify-center gap-2 bg-[#552BA9]">
-          {itensMenu.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              onPress={() => handleNavigate(item.path)}
-              className="items-center py-2 active:opacity-70"
-            >
-              <Text className="p-3 text-xl font-semibold text-white">{item.nome}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+      <View className="flex-row items-center justify-around border-t border-zinc-200 bg-white pb-6 pt-3 shadow-lg">
+        <TouchableOpacity onPress={() => handleNavigate('/')} className="flex-1 items-center">
+          <LayoutDashboard color={currentPath === '/' ? '#552BA9' : '#71717A'} size={24} />
+          <Text
+            className={`mt-1 text-xs font-medium ${
+              currentPath === '/' ? 'font-bold text-[#552BA9]' : 'text-zinc-500'
+            }`}
+          >
+            Dashboard
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => handleNavigate('/projetos')}
+          className="flex-1 items-center"
+        >
+          <List color={currentPath === '/projetos' ? '#552BA9' : '#71717A'} size={24} />
+          <Text
+            className={`mt-1 text-xs font-medium ${
+              currentPath === '/projetos' ? 'font-bold text-[#552BA9]' : 'text-zinc-500'
+            }`}
+          >
+            Lista de projetos
+          </Text>
+        </TouchableOpacity>
+      </View>
     </View>
   )
 }
