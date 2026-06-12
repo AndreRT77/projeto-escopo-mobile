@@ -9,11 +9,15 @@ export interface Comentario {
   registro_referencia: number | string | Record<string, unknown> | null
   registro_referencia_id?: number | string | null
   comentario_tipo_id?: number | string | null
+  autor_id?: number | string
+  autor_nome?: string
   criador_id?: number
   criador_nome?: string
   nome_criador?: string
   usuario_nome?: string
   foto_perfil?: string | null
+  autor_foto?: string | null
+  autor_foto_perfil?: string | null
   comentario_tipo?:
     | number
     | string

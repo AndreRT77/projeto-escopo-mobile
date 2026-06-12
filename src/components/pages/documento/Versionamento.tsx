@@ -12,6 +12,11 @@ type DiffPart = {
   tipo: 'igual' | 'novo' | 'removido'
 }
 
+type DiffLineOp = {
+  linha: string
+  tipo: DiffPart['tipo']
+}
+
 interface VersionamentoProps {
   versoes: documentoService.VersaoMin[]
   titulo: string
@@ -49,8 +54,12 @@ function ordenarVersoesPorData<T extends documentoService.DetalhesVersao>(versoe
   return [...versoesParaOrdenar].sort((a, b) => timestampDaVersao(b) - timestampDaVersao(a))
 }
 
-function caracteresDoConteudo(conteudo: string) {
-  return Array.from(String(conteudo || ''))
+function linhasDoConteudo(conteudo: string) {
+  const normalizado = String(conteudo || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+
+  return normalizado ? normalizado.split('\n') : []
 }
 
 function adicionarParte(partes: DiffPart[], texto: string | undefined, tipo: DiffPart['tipo']) {
@@ -66,13 +75,57 @@ function adicionarParte(partes: DiffPart[], texto: string | undefined, tipo: Dif
   partes.push({ texto, tipo })
 }
 
-function adicionarCaracteres(partes: DiffPart[], caracteres: string[], tipo: DiffPart['tipo']) {
-  adicionarParte(partes, caracteres.join(''), tipo)
+function adicionarLinhas(partes: DiffPart[], linhas: string[], tipo: DiffPart['tipo']) {
+  if (!linhas.length) return
+  adicionarParte(partes, linhas.map((linha) => `${linha}\n`).join(''), tipo)
+}
+
+function operacoesDiffLinhas(antigas: string[], novas: string[]) {
+  const dp = Array.from({ length: antigas.length + 1 }, () => Array(novas.length + 1).fill(0))
+  const operacoes: DiffLineOp[] = []
+
+  for (let antigoIndex = antigas.length - 1; antigoIndex >= 0; antigoIndex -= 1) {
+    for (let novoIndex = novas.length - 1; novoIndex >= 0; novoIndex -= 1) {
+      dp[antigoIndex][novoIndex] =
+        antigas[antigoIndex] === novas[novoIndex]
+          ? dp[antigoIndex + 1][novoIndex + 1] + 1
+          : Math.max(dp[antigoIndex + 1][novoIndex], dp[antigoIndex][novoIndex + 1])
+    }
+  }
+
+  let antigoIndex = 0
+  let novoIndex = 0
+
+  while (antigoIndex < antigas.length && novoIndex < novas.length) {
+    if (antigas[antigoIndex] === novas[novoIndex]) {
+      operacoes.push({ linha: antigas[antigoIndex], tipo: 'igual' })
+      antigoIndex += 1
+      novoIndex += 1
+    } else if (dp[antigoIndex + 1][novoIndex] >= dp[antigoIndex][novoIndex + 1]) {
+      operacoes.push({ linha: antigas[antigoIndex], tipo: 'removido' })
+      antigoIndex += 1
+    } else {
+      operacoes.push({ linha: novas[novoIndex], tipo: 'novo' })
+      novoIndex += 1
+    }
+  }
+
+  while (antigoIndex < antigas.length) {
+    operacoes.push({ linha: antigas[antigoIndex], tipo: 'removido' })
+    antigoIndex += 1
+  }
+
+  while (novoIndex < novas.length) {
+    operacoes.push({ linha: novas[novoIndex], tipo: 'novo' })
+    novoIndex += 1
+  }
+
+  return operacoes
 }
 
 function compararConteudos(conteudoAntigo: string, conteudoNovo: string) {
-  const antigas = caracteresDoConteudo(conteudoAntigo)
-  const novas = caracteresDoConteudo(conteudoNovo)
+  const antigas = linhasDoConteudo(conteudoAntigo)
+  const novas = linhasDoConteudo(conteudoNovo)
   const antigo: DiffPart[] = []
   const novo: DiffPart[] = []
 
@@ -95,32 +148,29 @@ function compararConteudos(conteudoAntigo: string, conteudoNovo: string) {
     fimNovo -= 1
   }
 
-  adicionarCaracteres(antigo, antigas.slice(0, inicioIgual), 'igual')
-  adicionarCaracteres(novo, novas.slice(0, inicioIgual), 'igual')
+  adicionarLinhas(antigo, antigas.slice(0, inicioIgual), 'igual')
+  adicionarLinhas(novo, novas.slice(0, inicioIgual), 'igual')
 
   const meioAntigo = antigas.slice(inicioIgual, fimAntigo + 1)
   const meioNovo = novas.slice(inicioIgual, fimNovo + 1)
-  const maiorMeio = Math.max(meioAntigo.length, meioNovo.length)
 
-  for (let index = 0; index < maiorMeio; index += 1) {
-    const caractereAntigo = meioAntigo[index]
-    const caractereNovo = meioNovo[index]
-
-    if (
-      caractereAntigo !== undefined &&
-      caractereNovo !== undefined &&
-      caractereAntigo === caractereNovo
-    ) {
-      adicionarParte(antigo, caractereAntigo, 'igual')
-      adicionarParte(novo, caractereNovo, 'igual')
-    } else {
-      adicionarParte(antigo, caractereAntigo, 'removido')
-      adicionarParte(novo, caractereNovo, 'novo')
+  operacoesDiffLinhas(meioAntigo, meioNovo).forEach((operacao) => {
+    if (operacao.tipo === 'igual') {
+      adicionarLinhas(antigo, [operacao.linha], 'igual')
+      adicionarLinhas(novo, [operacao.linha], 'igual')
+      return
     }
-  }
 
-  adicionarCaracteres(antigo, antigas.slice(fimAntigo + 1), 'igual')
-  adicionarCaracteres(novo, novas.slice(fimNovo + 1), 'igual')
+    if (operacao.tipo === 'removido') {
+      adicionarLinhas(antigo, [operacao.linha], 'removido')
+      return
+    }
+
+    adicionarLinhas(novo, [operacao.linha], 'novo')
+  })
+
+  adicionarLinhas(antigo, antigas.slice(fimAntigo + 1), 'igual')
+  adicionarLinhas(novo, novas.slice(fimNovo + 1), 'igual')
 
   return { antigo, novo }
 }

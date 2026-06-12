@@ -36,6 +36,11 @@ type DestinoSugestao = {
   documentoId: number | string | ''
 }
 
+type EditorLayout = {
+  width: number
+  height: number
+}
+
 function formatDate(date?: string) {
   if (!date) return '---'
 
@@ -160,8 +165,24 @@ function projetoDoRegistro(registro: registroService.Registro | null) {
   )
 }
 
-function podeAlterar(nivelAcessoId: number | null, projetoIdentificado: boolean) {
-  return !projetoIdentificado || nivelAcessoId === 1 || nivelAcessoId === 2
+function podeAlterar(nivelAcessoId: number | null) {
+  return nivelAcessoId === 1 || nivelAcessoId === 2
+}
+
+function calcularPosicaoGatilho(conteudo: string, indice: number, layout: EditorLayout) {
+  const larguraTexto = Math.max(layout.width - 32, 120)
+  const caracteresPorLinha = Math.max(12, Math.floor(larguraTexto / 8.4))
+  const linhas = conteudo.slice(0, indice).split('\n')
+  const linhasVisuaisAntes = linhas
+    .slice(0, -1)
+    .reduce((total, linha) => total + Math.max(1, Math.ceil(linha.length / caracteresPorLinha)), 0)
+  const ultimaLinha = linhas[linhas.length - 1] || ''
+  const linhaVisual = linhasVisuaisAntes + Math.floor(ultimaLinha.length / caracteresPorLinha)
+  const colunaVisual = ultimaLinha.length % caracteresPorLinha
+  const left = Math.min(Math.max(8, colunaVisual * 8.4 + 8), Math.max(8, layout.width - 180))
+  const top = Math.min(Math.max(8, linhaVisual * 24 + 8), Math.max(8, layout.height - 56))
+
+  return { left, top }
 }
 
 function DestinoSugestaoCard({
@@ -301,8 +322,11 @@ export default function Registro() {
   const [loadingDocuments, setLoadingDocuments] = useState(false)
   const [saving, setSaving] = useState(false)
   const [sendingSuggestion, setSendingSuggestion] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
   const [editingContent, setEditingContent] = useState(false)
   const [suggestionTriggerOpen, setSuggestionTriggerOpen] = useState(false)
+  const [suggestionTriggerPosition, setSuggestionTriggerPosition] = useState({ left: 12, top: 12 })
+  const [editorLayout, setEditorLayout] = useState<EditorLayout>({ width: 0, height: 0 })
   const [suggestionOpen, setSuggestionOpen] = useState(false)
 
   useEffect(() => {
@@ -335,7 +359,7 @@ export default function Registro() {
     () => String(projetoId || projetoInferidoId || projetoDoRegistro(registro) || ''),
     [projetoId, projetoInferidoId, registro],
   )
-  const podeAlterarRegistro = podeAlterar(nivelAcessoId, Boolean(projetoAtualId))
+  const podeAlterarRegistro = podeAlterar(nivelAcessoId)
   const setoresSugestao = useMemo(() => setoresDisponiveis(documentos), [documentos])
 
   useEffect(() => {
@@ -402,6 +426,7 @@ export default function Registro() {
   useEffect(() => {
     if (podeAlterarRegistro) return
 
+    setEditingTitle(false)
     setEditingContent(false)
     setSuggestionOpen(false)
     setSuggestionTriggerOpen(false)
@@ -698,13 +723,33 @@ export default function Registro() {
                 <ChevronsLeft size={34} color="#111827" strokeWidth={2.5} />
               </TouchableOpacity>
 
-              <TextInput
-                value={titulo}
-                onChangeText={setTitulo}
-                editable={podeAlterarRegistro && !saving}
-                className="max-w-[310px] flex-1 rounded border border-transparent px-1 py-0 font-inter-bold text-2xl text-black"
-                selectionColor={PURPLE}
-              />
+              {editingTitle ? (
+                <TextInput
+                  value={titulo}
+                  onChangeText={setTitulo}
+                  onBlur={() => setEditingTitle(false)}
+                  editable={podeAlterarRegistro && !saving}
+                  autoFocus
+                  numberOfLines={1}
+                  className="min-w-0 flex-1 rounded border-2 border-purple-700 px-2 py-0 font-inter-bold text-2xl text-black"
+                  selectionColor={PURPLE}
+                />
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  disabled={!podeAlterarRegistro || saving}
+                  onPress={() => setEditingTitle(true)}
+                  className="min-w-0 flex-1"
+                >
+                  <Text
+                    className="font-inter-bold text-2xl text-black"
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {titulo}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <Text className={`text-sm ${hasChanges ? 'text-alert' : 'text-variant'}`}>
@@ -715,7 +760,13 @@ export default function Registro() {
             <Text className="text-sm text-black">Data de criação: {formatDate(dataCriacao)}</Text>
           </View>
 
-          <View className="relative z-0 mt-3 flex-1 rounded-2xl border border-cinza-300 bg-white px-4 py-4">
+          <View
+            className="relative z-0 mt-3 flex-1 rounded-2xl border border-cinza-300 bg-white px-4 py-4"
+            onLayout={(event) => {
+              const { width, height } = event.nativeEvent.layout
+              setEditorLayout({ width, height })
+            }}
+          >
             {editingContent ? (
               <TextInput
                 value={conteudo}
@@ -731,11 +782,20 @@ export default function Registro() {
                   if (proximaSelecao.start === proximaSelecao.end) {
                     setSelecaoTratada('')
                     setSuggestionTriggerOpen(false)
+                  } else {
+                    setSuggestionTriggerPosition(
+                      calcularPosicaoGatilho(
+                        conteudo,
+                        Math.min(proximaSelecao.start, proximaSelecao.end),
+                        editorLayout,
+                      ),
+                    )
                   }
                 }}
                 multiline
                 textAlignVertical="top"
                 editable={podeAlterarRegistro}
+                onBlur={() => setEditingContent(false)}
                 selectionColor={PURPLE}
                 placeholder="Este registro ainda não possui conteúdo."
                 placeholderTextColor="#6B7280"
@@ -777,7 +837,8 @@ export default function Registro() {
             {podeAlterarRegistro && suggestionTriggerOpen && !suggestionOpen && (
               <TouchableOpacity
                 onPress={() => abrirSugestaoComTrecho(sugestaoTexto || trechoSelecionado)}
-                className="absolute bottom-4 left-3 flex-row items-center gap-2 rounded-full border border-base bg-white px-4 py-2 shadow-external"
+                className="absolute flex-row items-center gap-2 rounded-full border border-base bg-white px-4 py-2 shadow-external"
+                style={suggestionTriggerPosition}
               >
                 <Lightbulb size={19} color={PURPLE} />
                 <Text className="font-inter-semibold text-sm" style={{ color: PURPLE }}>

@@ -52,8 +52,8 @@ function pegarCampoDocumento(
   return fallback
 }
 
-function podeAlterar(nivelAcessoId: number | null, projetoIdentificado: boolean) {
-  return !projetoIdentificado || nivelAcessoId === 1 || nivelAcessoId === 2
+function podeAlterar(nivelAcessoId: number | null) {
+  return nivelAcessoId === 1 || nivelAcessoId === 2
 }
 
 export default function Documento() {
@@ -77,6 +77,7 @@ export default function Documento() {
 
   const [titulo, setTitulo] = useState('')
   const [conteudo, setConteudo] = useState('')
+  const [projetoInferidoId, setProjetoInferidoId] = useState<string | number | null>(null)
   const [nivelAcessoId, setNivelAcessoId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -85,11 +86,12 @@ export default function Documento() {
   const [editingContent, setEditingContent] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
-  const projetoId = useMemo(
+  const projetoIdDireto = useMemo(
     () => pegarCampoDocumento(documento, ['projeto_id', 'projetoId'], projetoIdParam),
     [documento, projetoIdParam],
   )
-  const podeAlterarDocumento = podeAlterar(nivelAcessoId, Boolean(projetoId))
+  const projetoId = projetoIdDireto || projetoInferidoId
+  const podeAlterarDocumento = podeAlterar(nivelAcessoId)
 
   useEffect(() => {
     async function loadDocumento() {
@@ -118,6 +120,45 @@ export default function Documento() {
 
     loadDocumento()
   }, [documentoId, showAlert])
+
+  useEffect(() => {
+    let ativo = true
+
+    async function inferirProjeto() {
+      if (projetoIdDireto || !documentoId || !documento) return
+
+      try {
+        const projetos = await projetoService.getProjects()
+        const porNome = projetos.find((projeto) => projeto.titulo === documento.projeto)
+
+        if (ativo && porNome?.id) {
+          setProjetoInferidoId(porNome.id)
+          return
+        }
+
+        for (const projeto of projetos) {
+          try {
+            const data = await documentoService.obterCategoriasComDocumentoDeUmProjeto(projeto.id)
+            const categorias = data?.projeto?.categorias || []
+            const encontrado = categorias.some((categoria) =>
+              categoria.documentos?.some((doc) => String(doc.id) === String(documentoId)),
+            )
+
+            if (encontrado) {
+              if (ativo) setProjetoInferidoId(projeto.id)
+              return
+            }
+          } catch {}
+        }
+      } catch {}
+    }
+
+    inferirProjeto()
+
+    return () => {
+      ativo = false
+    }
+  }, [documento, documentoId, projetoIdDireto])
 
   useEffect(() => {
     let ativo = true
