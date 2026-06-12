@@ -2,7 +2,7 @@ import { Link } from 'expo-router'
 import { Check, ChevronRight, Folder, FolderOpen, X } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { Image, ScrollView, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import iconMailOpen from '@/assets/images/icons/icon-mail-open.png'
 import { Loading } from '@/components/ui/Loading'
@@ -65,6 +65,13 @@ export default function Dashboard() {
   const [documentos, setDocumentos] = useState<Documento[]>([])
   const [convites, setConvites] = useState<Convite[]>([])
   const [loading, setLoading] = useState(true)
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
 
   useEffect(() => {
     async function loadDashboard() {
@@ -120,10 +127,10 @@ export default function Dashboard() {
   }
 
   return (
-    <SafeAreaView className="flex-1">
+    <View className="flex-1">
       <ScrollView
         className="flex-1 px-5 py-2"
-        contentContainerClassName="pb-12"
+        contentContainerStyle={scrollViewPadding}
         showsVerticalScrollIndicator={false}
       >
         {/* Sessão: Acesso Rápido */}
@@ -222,6 +229,6 @@ export default function Dashboard() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }

@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router'
 import { List, ListCheck } from 'lucide-react-native'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
@@ -59,6 +59,13 @@ const NotificacaoItem = React.memo(({ notificacao, onOpen }: NotificacaoProps) =
 export default function Notificacoes() {
   const router = useRouter()
   const { showAlert } = useAlert()
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
 
   const [notificacoes, setNotificacoes] = useState<notificacaoService.Notificacao[]>([])
   const [loading, setLoading] = useState(true)
@@ -161,14 +168,13 @@ export default function Notificacoes() {
   }
 
   return (
-    <SafeAreaView className="flex-1">
-      <View className="px-5 pb-4">
-        <Text className="font-inter-bold text-2xl text-cinza-700">Notificações</Text>
-      </View>
-
-      <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 24 }}>
+    <View className="flex-1">
+      <ScrollView className="flex-1 px-5" contentContainerStyle={scrollViewPadding}>
+        <View className="pb-4">
+          <Text className="font-inter-bold text-2xl text-cinza-700">Notificações</Text>
+        </View>
         {renderConteudo()}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }

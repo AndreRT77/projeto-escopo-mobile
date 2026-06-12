@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, FolderPlus, PenLine, Plus } from 'lucide-react-
 import React, { useCallback, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import Documentos from '@/components/pages/projeto/Documentos'
@@ -34,6 +34,13 @@ export default function ProjectDetails() {
   const router = useRouter()
   const { id } = useLocalSearchParams<{ id: string }>()
   const { showAlert } = useAlert()
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
 
   // Estados de Dados
   const [project, setProject] = useState<projetoService.DetalhesDoProjeto | null>(null)
@@ -216,8 +223,8 @@ export default function ProjectDetails() {
   }
 
   return (
-    <SafeAreaView className="flex-1">
-      <ScrollView className="flex-1 px-5">
+    <View className="flex-1">
+      <ScrollView className="flex-1 px-5" contentContainerStyle={scrollViewPadding}>
         {/* Detalhes do projeto */}
         <View className="w-full p-2">
           <View className="flex-row items-center gap-2">
@@ -396,6 +403,6 @@ export default function ProjectDetails() {
           Salvar Reunião
         </Button>
       </FormModal>
-    </SafeAreaView>
+    </View>
   )
 }

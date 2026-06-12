@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
-import { ScrollView } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { ScrollView, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import ProjectForm from '@/components/form/ProjectForm'
 import { Loading } from '@/components/ui/Loading'
@@ -18,6 +18,14 @@ export default function NewProject() {
   const router = useRouter()
   const { showAlert } = useAlert()
   const { logout } = useAuth()
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
+
   const [userEmail, setUserEmail] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -65,8 +73,8 @@ export default function NewProject() {
   }
 
   return (
-    <SafeAreaView className="flex-1">
-      <ScrollView className="flex-1 px-5">
+    <View className="flex-1">
+      <ScrollView className="flex-1 px-5" contentContainerStyle={scrollViewPadding}>
         <Text className="mb-6 font-inter-bold text-2xl text-cinza-700">Novo Projeto</Text>
 
         <ProjectForm
@@ -78,6 +86,6 @@ export default function NewProject() {
           stopLoading={stopLoading}
         />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   )
 }

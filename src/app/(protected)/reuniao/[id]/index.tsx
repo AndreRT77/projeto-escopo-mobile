@@ -4,7 +4,7 @@ import { ChevronsLeft, PencilLine, Plus, Trash2 } from 'lucide-react-native'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Alert, Image, Linking, Modal, ScrollView, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import USER_DEFAULT_IMAGE from '@/assets/images/icons/user-default.jpg'
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
@@ -38,6 +38,12 @@ export default function DetailsMeeting() {
   }>()
   const router = useRouter()
   const { showAlert } = useAlert()
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
 
   const canEdit = Number(nivelAcessoId) === 1 || Number(nivelAcessoId) === 2
 
@@ -343,8 +349,8 @@ export default function DetailsMeeting() {
   const gravacaoExistente = detalhesReuniao?.links?.find((l) => l.tipo_link === 'reuniao')
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-row items-center justify-between border-b border-cinza-300 px-4 pb-3">
+    <View className="flex-1 bg-white">
+      <View className="flex-row items-center justify-between border-b border-cinza-300 px-4 py-3">
         <View className="flex-1 flex-row items-center gap-3">
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()}>
             <ChevronsLeft className="text-cinza-800 h-9 w-9" />
@@ -385,7 +391,7 @@ export default function DetailsMeeting() {
         )}
       </View>
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView className="flex-1 px-4" contentContainerStyle={scrollViewPadding}>
         {/* CARD: GRAVAÇÃO DA REUNIÃO */}
         <View className="mt-4 w-full flex-col gap-3 rounded-2xl border border-cinza-300 p-4">
           <View className="flex-row items-center justify-between">
@@ -826,6 +832,6 @@ export default function DetailsMeeting() {
           </ScrollView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   )
 }

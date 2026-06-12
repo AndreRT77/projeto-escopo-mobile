@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { ScrollView, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import ProjectForm, { Integrante } from '@/components/form/ProjectForm'
 import { Loading } from '@/components/ui/Loading'
@@ -28,6 +28,13 @@ export default function EditProject() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const { showAlert } = useAlert()
   const { logout } = useAuth()
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
 
   // Estados
   const [projectData, setProjectData] = useState<projetoService.DetalhesDoProjeto | null>(null)
@@ -127,11 +134,15 @@ export default function EditProject() {
   const isPageLoading = isFetchingData || (!isFormReady && projectData !== null)
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
       {isPageLoading && <Loading />}
 
       {!isFetchingData && projectData && userEmail ? (
-        <ScrollView className="flex-1 px-5 py-4" style={{ display: isFormReady ? 'flex' : 'none' }}>
+        <ScrollView
+          contentContainerStyle={scrollViewPadding}
+          style={{ display: isFormReady ? 'flex' : 'none' }}
+          className="flex-1 px-5 py-4"
+        >
           <View className="mb-6 mt-2">
             <Text className="font-inter-bold text-3xl text-cinza-700">Editar Projeto</Text>
           </View>
@@ -147,6 +158,6 @@ export default function EditProject() {
           />
         </ScrollView>
       ) : null}
-    </SafeAreaView>
+    </View>
   )
 }

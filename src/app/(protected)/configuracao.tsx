@@ -4,7 +4,7 @@ import { Camera, CreditCard, LogOut, PenLine, X } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Image, Modal, ScrollView, TextInput, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { Button } from '@/components/ui/Button'
@@ -74,6 +74,13 @@ function ModalPlanCard({ plan, index, onClose }: any) {
 export default function Configuracao() {
   const { showAlert } = useAlert()
   const { logout } = useAuth()
+  const insets = useSafeAreaInsets()
+  const scrollViewPadding = {
+    paddingTop: insets.top,
+    paddingBottom: insets.bottom,
+    paddingLeft: insets.left,
+    paddingRight: insets.right,
+  }
 
   // Estados do Usuário
   const [userEmail, setUserEmail] = useState<string>('')
@@ -227,13 +234,13 @@ export default function Configuracao() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-cinza-100">
+    <View className="flex-1 bg-cinza-100">
       <ScrollView
         className="flex-1 px-5 py-8 sm:px-8"
-        contentContainerClassName="grow items-center pb-12"
+        contentContainerStyle={scrollViewPadding}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="w-full max-w-md">
+        <View className="w-full max-w-md pb-8">
           {/* Sessão: Avatar */}
           <View className="items-center pt-4">
             <View className="relative">
@@ -452,6 +459,6 @@ export default function Configuracao() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   )
 }
