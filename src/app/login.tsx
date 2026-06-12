@@ -96,7 +96,7 @@ export default function Login() {
               />
 
               <View className="items-end">
-                <Link href="/senha">
+                <Link href={'/senha' as any}>
                   <Text className="font-inter-medium text-base text-sm">Esqueceu a senha?</Text>
                 </Link>
               </View>

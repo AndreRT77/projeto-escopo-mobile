@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import { ChevronDown, ChevronRight } from 'lucide-react-native'
 import React from 'react'
 import { TouchableOpacity, View } from 'react-native'
@@ -8,6 +9,7 @@ import * as registroService from '@/services/escopo-api/registro'
 
 interface RegistrosProps {
   formatRegistros: GroupedData<registroService.Registro>
+  projetoId?: string | number
   expandRegister: Record<string, boolean>
   setExpandRegister: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
 }
@@ -29,9 +31,11 @@ const ORDEM_MESES = [
 
 export default function Registros({
   formatRegistros,
+  projetoId,
   expandRegister,
   setExpandRegister,
 }: RegistrosProps) {
+  const router = useRouter()
   // Verifica se o objeto formatRegistros existe e tem pelo menos um ano (chave)
   const hasRegistros = formatRegistros && Object.keys(formatRegistros).length > 0
 
@@ -68,14 +72,24 @@ export default function Registros({
 
                     {expandRegister[mes] !== false &&
                       registros.map((reg) => (
-                        <View
+                        <TouchableOpacity
                           key={reg.id}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/registro/[id]',
+                              params: {
+                                id: String(reg.id),
+                                ...(projetoId ? { projetoId: String(projetoId) } : {}),
+                              },
+                            } as any)
+                          }
                           className="mb-3 rounded-2xl border border-cinza-300 bg-white p-4"
                         >
                           <View className="flex-row items-start justify-between">
                             <Text
                               className="mr-2 flex-1 font-inter-bold text-base text-cinza-700"
                               numberOfLines={1}
+                              ellipsizeMode="tail"
                             >
                               {reg.titulo}
                             </Text>
@@ -84,9 +98,9 @@ export default function Registros({
                             </Text>
                           </View>
                           <Text className="mt-2 text-sm text-cinza-500" numberOfLines={2}>
-                            {reg.conteudo}
+                            {reg.conteudo || 'Sem conteúdo.'}
                           </Text>
-                        </View>
+                        </TouchableOpacity>
                       ))}
                   </View>
                 ))}

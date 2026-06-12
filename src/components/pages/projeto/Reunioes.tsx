@@ -87,6 +87,7 @@ export default function Reunioes({
                             <Text
                               className="font-inter-bold text-base text-cinza-700"
                               numberOfLines={1}
+                              ellipsizeMode="tail"
                             >
                               {reuniao.titulo}
                             </Text>

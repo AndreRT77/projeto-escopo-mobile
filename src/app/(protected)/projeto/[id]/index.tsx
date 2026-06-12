@@ -144,7 +144,10 @@ export default function ProjectDetails() {
         conteudo: '',
       })
 
-      router.push(`/registro/${novoRegistro.id}`)
+      router.push({
+        pathname: '/registro/[id]',
+        params: { id: String(novoRegistro.id), projetoId: String(id) },
+      } as any)
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
     }
@@ -156,7 +159,10 @@ export default function ProjectDetails() {
         titulo: 'Novo Documento',
       })
 
-      router.push(`/documento/${novoDocumento.id}`)
+      router.push({
+        pathname: '/documento/[id]',
+        params: { id: String(novoDocumento.id), projetoId: String(id) },
+      } as any)
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
     }
@@ -332,6 +338,7 @@ export default function ProjectDetails() {
               expandRegister={expandRegister}
               setExpandRegister={setExpandRegister}
               formatRegistros={formatRegistros}
+              projetoId={id}
             />
           </View>
         )}

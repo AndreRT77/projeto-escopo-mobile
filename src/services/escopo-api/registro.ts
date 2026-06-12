@@ -4,9 +4,32 @@ import { api } from '@/services/api'
 export interface Registro {
   id: number
   titulo: string
-  conteudo: string
+  conteudo: string | null
   atualizado_em: string
+  ultima_alteracao?: string
+  ultima_atualizacao?: string
+  data_atualizacao?: string
+  updated_at?: string
+  modified_at?: string
+  alterado_em?: string
   criado_em: string
+  data_criacao?: string
+  created_at?: string
+  criacao?: string
+  projeto_id?: number | string
+  projetoId?: number | string
+  id_projeto?: number | string
+  project_id?: number | string
+  projeto?: {
+    id?: number | string
+    projeto_id?: number | string
+    projetoId?: number | string
+  }
+  project?: {
+    id?: number | string
+    projeto_id?: number | string
+    projetoId?: number | string
+  }
 }
 
 export async function obterRegistrosDeUmProjeto(projetoId: string | number): Promise<Registro[]> {
@@ -41,7 +64,7 @@ export async function atualizarTitulo(
 export async function atualizarConteudo(
   registroId: string | number,
   body: {
-    conteudo: string
+    conteudo: string | null
   },
 ) {
   const response = await api.patch(`${ENV.API_URL}/api/v1/registro/${registroId}/conteudo`, body)
