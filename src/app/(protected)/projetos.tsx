@@ -1,6 +1,6 @@
-import { Link } from 'expo-router'
+import { Link, useFocusEffect } from 'expo-router'
 import { ChevronRight, Plus } from 'lucide-react-native'
-import { useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Image, Pressable, ScrollView, View } from 'react-native'
 
 import { Loading } from '@/components/ui/Loading'
@@ -15,21 +15,35 @@ export default function Projetos() {
   const { showAlert } = useAlert()
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function loadProjects() {
-      try {
-        const data = await projetoService.getProjects()
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true
 
-        setProjetos(data)
-      } catch (err) {
-        showAlert(extractApiErrorMessage(err), 'error')
-      } finally {
-        setLoading(false)
+      async function loadProjects() {
+        try {
+          const data = await projetoService.getProjects()
+
+          if (isActive) {
+            setProjetos(data)
+          }
+        } catch (err) {
+          if (isActive) {
+            showAlert(extractApiErrorMessage(err), 'error')
+          }
+        } finally {
+          if (isActive) {
+            setLoading(false)
+          }
+        }
       }
-    }
 
-    loadProjects()
-  }, [])
+      loadProjects()
+
+      return () => {
+        isActive = false
+      }
+    }, []),
+  )
 
   if (loading) {
     return <Loading />
