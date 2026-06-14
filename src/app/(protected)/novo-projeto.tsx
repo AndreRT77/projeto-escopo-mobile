@@ -2,8 +2,8 @@ import { useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
-import ProjectForm from '@/components/form/ProjectForm'
 import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { criarProjetoData } from '@/schemas/form-projeto.schema'
 import * as projetoService from '@/services/escopo-api/projeto'
 import { extractApiErrorMessage } from '@/utils/extractApiErrorMessage'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import CreateProjectForm from '@/components/form/project/CreateProjectForm'
 
 export default function NewProject() {
   const router = useRouter()
@@ -20,7 +20,7 @@ export default function NewProject() {
   const { logout } = useAuth()
   const insets = useSafeAreaInsets()
   const scrollViewPadding = {
-    paddingTop: insets.top,
+    paddingTop: 20,
     paddingBottom: insets.bottom,
     paddingLeft: insets.left,
     paddingRight: insets.right,
@@ -48,7 +48,7 @@ export default function NewProject() {
         const emailLogado = usuarioLogado.email
 
         setUserEmail(emailLogado)
-      } catch (error) {
+      } catch {
         logout()
       } finally {
         stopLoading()
@@ -62,7 +62,7 @@ export default function NewProject() {
     try {
       const response = await projetoService.criarProjeto(formData)
       showAlert('Projeto criado com sucesso!', 'success')
-      router.push(`/projeto/${response.id}`)
+      router.replace(`/projeto/${response.id}`)
     } catch (error) {
       showAlert(extractApiErrorMessage(error), 'error')
     }
@@ -77,9 +77,7 @@ export default function NewProject() {
       <ScrollView className="flex-1 px-5" contentContainerStyle={scrollViewPadding}>
         <Text className="mb-6 font-inter-bold text-2xl text-cinza-700">Novo Projeto</Text>
 
-        <ProjectForm
-          mode="create"
-          initialData={null}
+        <CreateProjectForm
           onSubmit={handleCriarProjeto}
           userEmail={userEmail}
           onError={(msg) => showAlert(msg, 'error')}

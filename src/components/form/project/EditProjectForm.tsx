@@ -1,235 +1,66 @@
-import { Search, X } from 'lucide-react-native'
+import { Search } from 'lucide-react-native'
 import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Image, TouchableOpacity, View } from 'react-native'
+import { TouchableOpacity, View } from 'react-native'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 
 import { LabelWithTextInput } from '@/components/form/LabelWithTextInput'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
-import {
-  atualizarProjetoData,
-  atualizarProjetoSchema,
-  criarProjetoData,
-  criarProjetoSchema,
-} from '@/schemas/form-projeto.schema'
+import { atualizarProjetoData, atualizarProjetoSchema } from '@/schemas/form-projeto.schema'
 import * as projetoService from '@/services/escopo-api/projeto'
 import * as usuarioService from '@/services/escopo-api/usuario'
-import { zodResolver } from '@hookform/resolvers/zod'
-import z from 'zod'
-import { Select } from '../ui/Select'
+import { Integrante, ProjectMember } from '@/components/form/project/ProjectMember'
 
-export interface Integrante {
-  id: string | number
-  nome: string
-  email: string
-  fotoPerfil?: string
-  isOwner?: boolean
-  nivel_acesso_id: number
-  usuario_projeto_id?: string | number
-  convite_id?: string | number
-}
-
-interface ProjectFormProps {
-  mode: 'create' | 'edit'
+interface EditProjectFormProps {
   initialData: any
   onSubmit: (data: any) => Promise<void>
-  userEmail: string
-  projectId?: string | null
+  projectId: string
   onError: (message: string) => void
   stopLoading: () => void
 }
 
-interface ProjectMemberProps {
-  integrante: Integrante
-  id: string | number
-  isOwner?: boolean
-  adicional?: boolean
-  pendente?: boolean
-  onClose: () => void
-  onNivelAcessoChange: (id: string | number, novoNivel: number) => void
-}
+const formSchema = atualizarProjetoSchema.extend({ email: z.string().optional() })
+type FormValues = atualizarProjetoData & { email?: string }
 
-const NIVEIS_ACESSO = [
-  { id: 1, label: 'Gerente' },
-  { id: 2, label: 'Analista' },
-  { id: 3, label: 'Dev' },
-  { id: 4, label: 'Cliente' },
-]
-
-function ProjectMember({
-  integrante,
-  id,
-  isOwner = false,
-  adicional = false,
-  pendente = false,
-  onClose,
-  onNivelAcessoChange,
-}: ProjectMemberProps) {
-  return (
-    <View
-      className={`mb-2 w-full flex-row items-center justify-between rounded-xl border bg-cinza-100 p-3
-        ${isOwner ? 'border-transparent bg-cinza-200' : 'border-transparent'}
-        ${pendente ? 'border-transparent opacity-70' : ''}
-        ${adicional ? 'border-purple-300 bg-purple-50' : ''}
-      `}
-    >
-      <View className="mr-2 flex-1 flex-row items-center gap-3">
-        <Image
-          source={{
-            uri:
-              integrante.fotoPerfil ||
-              'https://upload.wikimedia.org/wikipedia/commons/2/2f/No-photo-m.png',
-          }}
-          className="h-9 w-9 rounded-full bg-cinza-300"
-        />
-        <View className="flex-1">
-          <Text
-            numberOfLines={1}
-            className={`font-inter-semibold text-sm text-cinza-700
-              ${pendente ? 'text-cinza-400' : ''}
-              ${adicional ? 'text-purple-900' : ''}
-            `}
-          >
-            {integrante.nome}
-          </Text>
-
-          {isOwner && (
-            <Text className="font-inter-regular text-xs text-cinza-500">Proprietário(a)</Text>
-          )}
-          {pendente && (
-            <Text className="font-inter-regular text-xs text-cinza-400">(Convite pendente)</Text>
-          )}
-        </View>
-      </View>
-
-      <View className="flex-row items-center gap-2">
-        <View className="w-[110px]">
-          <Select
-            options={NIVEIS_ACESSO}
-            selectedValue={integrante.nivel_acesso_id || 4}
-            onValueChange={(value) => onNivelAcessoChange(id, Number(value))}
-            disabled={isOwner}
-            triggerClassName={`py-1.5 px-2 border border-cinza-300 rounded-lg
-              ${isOwner ? 'bg-cinza-100 opacity-50 border-transparent' : 'bg-white'}
-              ${adicional ? 'border-purple-300 bg-purple-100' : ''}
-            `}
-            textClassName="text-xs font-inter-medium"
-            iconSize={16}
-          />
-        </View>
-
-        {!isOwner && (
-          <TouchableOpacity onPress={onClose} className="p-1">
-            <X size={18} color="#4B5563" />
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
-  )
-}
-
-export default function ProjectForm({
-  mode,
+export default function EditProjectForm({
   initialData,
   onSubmit,
-  userEmail,
-  projectId = null,
+  projectId,
   onError,
   stopLoading,
-}: ProjectFormProps) {
+}: EditProjectFormProps) {
   const [integrantesAtuais, setIntegrantesAtuais] = useState<Integrante[]>([])
   const [integrantesAdicionais, setIntegrantesAdicionais] = useState<Integrante[]>([])
   const [pendentes, setPendentes] = useState<Integrante[]>([])
   const [emailError, setEmailError] = useState('')
+
+  // Arrays para rastrear exclusões no backend
   const [integrantesExcluidos, setIntegrantesExcluidos] = useState<(string | number)[]>([])
   const [convitesExcluidos, setConvitesExcluidos] = useState<(string | number)[]>([])
 
-  const isEdit = mode === 'edit'
-
-  const formSchema = isEdit
-    ? atualizarProjetoSchema.extend({ email: z.string().optional() })
-    : criarProjetoSchema.extend({ email: z.string().optional() })
-
-  type FormValues = (criarProjetoData | atualizarProjetoData) & { email?: string }
-
   const { control, handleSubmit, getValues, setValue, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      titulo: '',
-      descricao: '',
-      email: '',
-    },
+    defaultValues: { titulo: '', descricao: '', email: '' },
   })
 
-  async function inserirProprietario() {
-    try {
-      const usuario = await usuarioService.getUserByEmail(userEmail)
-
-      const novoIntegrante: Integrante = {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        fotoPerfil: usuario.foto_perfil,
-        isOwner: true,
-        nivel_acesso_id: 1,
-      }
-
-      setIntegrantesAtuais((prev) => {
-        if (prev.some((i) => i.id === usuario.id)) return prev
-        return [...prev, novoIntegrante]
-      })
-    } catch (error) {
-      onError('Ocorreu uma falha na requisição do proprietário')
-    }
-  }
-
-  async function submitForm(data: FormValues) {
-    const { email, ...dadosLimpos } = data
-
-    let formData
-
-    if (!isEdit) {
-      formData = {
-        ...dadosLimpos,
-        integrantes: integrantesAdicionais,
-      }
-    } else {
-      formData = {
-        ...dadosLimpos,
-        integrantesAtuais,
-        integrantesExcluidos,
-        integrantesAdicionais,
-        pendentes,
-        convitesExcluidos,
-      }
-    }
-    await onSubmit(formData)
-  }
-
   useEffect(() => {
-    if (!isEdit) {
-      inserirProprietario()
-      stopLoading()
-      return
-    }
-
-    if (initialData) {
+    if (initialData && projectId) {
       reset({
         titulo: initialData.titulo,
         descricao: initialData.descricao ?? '',
         email: '',
       })
       initListaParticipantes(projectId)
-      stopLoading()
     }
-  }, [isEdit, initialData])
+  }, [initialData, projectId])
 
-  async function initListaParticipantes(id: string | null) {
-    if (!id) return
+  async function initListaParticipantes(id: string) {
     try {
       const response = await projetoService.obterParticipantesDeUmProjeto(id)
 
-      const participantesMapeados: Integrante[] = response.participantes.map((p) => ({
+      const participantesMapeados: Integrante[] = response.participantes.map((p: any) => ({
         id: p.usuario_id,
         usuario_projeto_id: p.usuario_projeto_id,
         nome: p.nome,
@@ -239,7 +70,7 @@ export default function ProjectForm({
         nivel_acesso_id: Number(p.nivel_acesso_id),
       }))
 
-      const pendentesMapeados: Integrante[] = response.pendentes.map((p) => ({
+      const pendentesMapeados: Integrante[] = response.pendentes.map((p: any) => ({
         id: p.convite_id,
         convite_id: p.convite_id,
         nome: p.nome,
@@ -250,14 +81,15 @@ export default function ProjectForm({
 
       setIntegrantesAtuais(participantesMapeados)
       setPendentes(pendentesMapeados)
-    } catch (error) {
+    } catch {
       onError('Erro ao carregar membros do projeto.')
+    } finally {
+      stopLoading()
     }
   }
 
-  async function handleAddIntegranteAdicional() {
+  async function handleAddIntegrante() {
     const emailBusca = getValues('email')
-
     if (!emailBusca?.trim()) {
       setEmailError('Insira um email para realizar a busca.')
       return
@@ -285,7 +117,7 @@ export default function ProjectForm({
 
       setValue('email', '')
       setIntegrantesAdicionais((prev) => [...prev, novoIntegrante])
-    } catch (error) {
+    } catch {
       onError('Usuário não encontrado')
     }
   }
@@ -301,13 +133,25 @@ export default function ProjectForm({
     )
   }
 
+  async function submitForm(data: FormValues) {
+    const { email, ...dadosLimpos } = data
+    await onSubmit({
+      ...dadosLimpos,
+      integrantesAtuais,
+      integrantesExcluidos,
+      integrantesAdicionais,
+      pendentes,
+      convitesExcluidos,
+    })
+  }
+
   return (
     <View className="flex-col gap-5 pb-10">
       <LabelWithTextInput
         control={control}
         name="titulo"
         label="Título do Projeto"
-        placeholder="Novo Projeto"
+        placeholder="Nome do Projeto"
         rules={{ required: 'O título precisa ser preenchido' }}
       />
 
@@ -315,7 +159,7 @@ export default function ProjectForm({
         control={control}
         name="descricao"
         label="Sobre o projeto"
-        placeholder="Insira uma breve descrição sobre o projeto"
+        placeholder="Insira uma breve descrição"
         multiline
         numberOfLines={3}
       />
@@ -328,10 +172,7 @@ export default function ProjectForm({
           placeholder="Buscar por email"
           rules={{ onChange: () => setEmailError('') }}
         />
-        <TouchableOpacity
-          onPress={handleAddIntegranteAdicional}
-          className="absolute bottom-3 right-4 p-1"
-        >
+        <TouchableOpacity onPress={handleAddIntegrante} className="absolute bottom-3 right-4 p-1">
           <Search size={20} color="#6B7280" />
         </TouchableOpacity>
       </View>
@@ -354,8 +195,9 @@ export default function ProjectForm({
               setIntegrantesAtuais((prev) =>
                 prev.filter((i) => (i.usuario_projeto_id || i.id) !== targetId),
               )
-              if (integrante.usuario_projeto_id)
+              if (integrante.usuario_projeto_id) {
                 setIntegrantesExcluidos((prev) => [...prev, integrante.usuario_projeto_id!])
+              }
             }}
             onNivelAcessoChange={(id, nivel) =>
               atualizarNivelAcesso(
@@ -386,7 +228,7 @@ export default function ProjectForm({
           />
         ))}
 
-        {isEdit && pendentes.length > 0 && (
+        {pendentes.length > 0 && (
           <View className="mt-4">
             <Text className="mb-2 text-center font-inter-bold text-cinza-500">
               Convites Pendentes
@@ -411,7 +253,7 @@ export default function ProjectForm({
       </View>
 
       <Button onPress={handleSubmit(submitForm)} className="mt-6 w-full">
-        {isEdit ? 'Atualizar Projeto' : 'Criar Projeto'}
+        Atualizar Projeto
       </Button>
     </View>
   )

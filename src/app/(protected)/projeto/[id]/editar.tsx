@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import React, { useEffect, useState } from 'react'
-import { ScrollView, View } from 'react-native'
+import { Alert, ScrollView, TouchableOpacity, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import ProjectForm, { Integrante } from '@/components/form/ProjectForm'
+import { Integrante } from '@/components/form/project/ProjectMember'
+import EditProjectForm from '@/components/form/project/EditProjectForm'
 import { Loading } from '@/components/ui/Loading'
 import { Text } from '@/components/ui/Text'
 import { STORAGE_KEYS } from '@/constants/storage'
@@ -30,7 +31,7 @@ export default function EditProject() {
   const { logout } = useAuth()
   const insets = useSafeAreaInsets()
   const scrollViewPadding = {
-    paddingTop: insets.top,
+    paddingTop: 20,
     paddingBottom: insets.bottom,
     paddingLeft: insets.left,
     paddingRight: insets.right,
@@ -131,31 +132,57 @@ export default function EditProject() {
     }
   }
 
+  function handleExcluirProjeto() {
+    Alert.alert('Excluir Projeto', 'Tem certeza que deseja excluir este projeto?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsFetchingData(true)
+            await projetoService.excluirProjeto(id)
+            showAlert('Projeto excluído com sucesso!', 'success')
+            router.dismissAll()
+          } catch (error) {
+            setIsFetchingData(false)
+            showAlert(extractApiErrorMessage(error), 'error')
+          }
+        },
+      },
+    ])
+  }
+
   const isPageLoading = isFetchingData || (!isFormReady && projectData !== null)
 
   return (
-    <View className="flex-1 bg-white">
+    <View className="flex-1">
       {isPageLoading && <Loading />}
 
       {!isFetchingData && projectData && userEmail ? (
         <ScrollView
           contentContainerStyle={scrollViewPadding}
           style={{ display: isFormReady ? 'flex' : 'none' }}
-          className="flex-1 px-5 py-4"
+          className="flex-1 px-5"
         >
           <View className="mb-6 mt-2">
             <Text className="font-inter-bold text-3xl text-cinza-700">Editar Projeto</Text>
           </View>
 
-          <ProjectForm
-            mode="edit"
+          <EditProjectForm
             initialData={projectData}
             onSubmit={handleAtualizarProjeto}
-            userEmail={userEmail}
             projectId={id}
             onError={(msg) => showAlert(msg, 'error')}
             stopLoading={() => setIsFormReady(true)}
           />
+
+          <TouchableOpacity
+            onPress={handleExcluirProjeto}
+            className="mb-8 mt-4 items-center justify-center rounded-xl border border-white bg-red-500 py-3.5"
+          >
+            <Text className="font-inter-semibold text-white">Excluir Projeto</Text>
+          </TouchableOpacity>
         </ScrollView>
       ) : null}
     </View>

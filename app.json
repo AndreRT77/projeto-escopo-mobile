@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.znwwqh.escopo"
     },
     "web": {
       "output": "static",
@@ -44,10 +45,10 @@
         "expo-font",
         {
           "fonts": [
-            "./assets/fonts/Inter-Regular.otf",
-            "./assets/fonts/Inter-Medium.otf",
-            "./assets/fonts/Inter-SemiBold.otf",
-            "./assets/fonts/Inter-Bold.otf"
+            "./src/assets/fonts/Inter-Regular.otf",
+            "./src/assets/fonts/Inter-Medium.otf",
+            "./src/assets/fonts/Inter-SemiBold.otf",
+            "./src/assets/fonts/Inter-Bold.otf"
           ]
         }
       ]
@@ -55,6 +56,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "17f4dffa-8cfd-4871-9804-60efa8c5eeb4"
+      }
     }
   }
 }
