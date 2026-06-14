@@ -55,7 +55,12 @@ export default function ProtectedLayout() {
           ),
           headerBackVisible: false,
         }}
-      />
+      >
+        <Stack.Screen name="projetos" options={{ animation: 'none' }} />
+        <Stack.Screen name="index" options={{ animation: 'none' }} />
+        <Stack.Screen name="notificacoes" options={{ animation: 'none' }} />
+        <Stack.Screen name="configuracao" options={{ animation: 'none' }} />
+      </Stack>
 
       <View className="flex-row items-center justify-around border-t border-zinc-200 bg-white pb-6 pt-3 shadow-lg">
         <TouchableOpacity onPress={() => handleNavigate('/')} className="flex-1 items-center">

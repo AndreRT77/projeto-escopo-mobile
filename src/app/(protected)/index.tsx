@@ -67,7 +67,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const insets = useSafeAreaInsets()
   const scrollViewPadding = {
-    paddingTop: insets.top,
+    paddingTop: 20,
     paddingBottom: insets.bottom,
     paddingLeft: insets.left,
     paddingRight: insets.right,

@@ -36,7 +36,7 @@ export default function ProjectDetails() {
   const { showAlert } = useAlert()
   const insets = useSafeAreaInsets()
   const scrollViewPadding = {
-    paddingTop: insets.top,
+    paddingTop: 20,
     paddingBottom: insets.bottom,
     paddingLeft: insets.left,
     paddingRight: insets.right,
